@@ -10,10 +10,15 @@ async def info_command(api, message, args):
     except: cpu_display = "Недоступно"
     try: ram_display = f"{psutil.virtual_memory().percent}%"
     except: ram_display = "Недоступно"
+    # Безопасное получение имени владельца
+    owner_name = "Неизвестно"
+    if api.me and api.me.names:
+        owner_name = api.me.names[0].name
+    
     info_text = (
         f"🤖 {api.BOT_NAME}\n\n"
         f"🔩 Версия: {api.BOT_VERSION} (#{api.BOT_VERSION_CODE})\n"
-        f"👤 Владелец: {api.me.names[0].name}\n\n"
+        f"👤 Владелец: {owner_name}\n\n"
         f"🖥 Информация о хосте:\n"
         f"    🐍 Python: {python_version}\n"
         f"    🧠 CPU: {cpu_display}\n"
