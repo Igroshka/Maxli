@@ -72,7 +72,13 @@ async def startup():
     await update_restart_complete(api)
     
     print(f"Юзербот {api.BOT_NAME} v{api.BOT_VERSION} запущен!")
-    print(f"Вошел как: {client.me.names[0].name} ({client.phone})")
+    
+    # Проверяем, что client.me не None перед обращением к его атрибутам
+    if client.me and client.me.names:
+        print(f"Вошел как: {client.me.names[0].name} ({client.phone})")
+    else:
+        print(f"Вошел как: {client.phone} (профиль не загружен)")
+    
     print("🔧 Используется модифицированная библиотека PyMax с извлечением chat_id")
 
 if __name__ == "__main__":
