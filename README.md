@@ -62,7 +62,7 @@ chmod +x install_linux.sh
 ### Ручная установка
 
 ```bash
-git clone https://github.com/Igroshka/Maxli.git && cd Maxli && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python3 main.py
+git clone https://github.com/Igroshka/Maxli.git && cd Maxli && python3.12 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python3.12 main.py
 ```
 
 ## 🔄 Автозапуск
