@@ -118,7 +118,7 @@ async def list_rules_command(api, message, args):
 async def responder_watcher(api, message):
     """Проверяет каждое входящее сообщение на соответствие правилам."""
     # Игнорируем свои сообщения и сообщения без текста
-    if message.sender == api.me.id or not message.text:
+    if (api.me and message.sender == api.me.id) or not message.text:
         return
 
     rules = db.get("rules", [])
