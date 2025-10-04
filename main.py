@@ -33,7 +33,7 @@ async def message_handler(message: Message):
     # --- Обработка загрузки модуля из файла теперь в самой команде load ---
 
     # --- Обработка "Прр" (только от других) ---
-    if message.sender != api.me.id:
+    if not api.me or message.sender != api.me.id:
         if message.text and message.text.lower() == "прр":
             if api.last_known_chat_id:
                 await client.send_message(chat_id=api.last_known_chat_id, text="Ку", notify=True)
