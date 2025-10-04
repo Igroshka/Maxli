@@ -1,0 +1,14 @@
+[Unit]
+Description=Maxli UserBot
+After=network.target
+
+[Service]
+Type=simple
+User=your_username
+WorkingDirectory=/path/to/Maxli
+ExecStart=/path/to/Maxli/venv/bin/python3 main.py
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
