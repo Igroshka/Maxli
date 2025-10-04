@@ -1,4 +1,30 @@
-# 🚀 Maxli UserBot - Установка и настройка
+<p align="center">
+  <img src="https://github.com/Igroshka/Maxli/blob/main/logo.png?raw=true" alt="Maxli Logo" width="150" style="border-radius:50%;" />
+</p>
+
+<h1 align="center">Maxli — UserBot for Messenger "Max"</h1>
+
+<p align="center">
+  ⚡ Удобный и гибкий UserBot для мессенджера Max  
+  <br>
+  Сделан <a href="https://t.me/YouRooni">YouRooni</a>
+</p>
+
+---
+
+## 🚀 О проекте
+**Maxli** — это UserBot для мессенджера **Max**, который позволяет автоматизировать рутинные действия, расширять функционал клиента и настраивать удобные команды.  
+Работает на Python, легко запускается на VDS или локально.
+
+---
+
+## ✨ Возможности
+- 📩 Автоматизация чатов и команд
+- 🔒 Поддержка личных и групповых чатов
+- ⚙️ Простая настройка
+- 🛠 Система модулей для кастомизации
+
+---
 
 ## 📋 Требования
 
@@ -15,24 +41,10 @@
 3. Введите номер телефона и код подтверждения
 4. Настройте автозапуск через Планировщик задач
 
-### Ручная установка
+### Ручная установка (PowerShell)
 
 ```bash
-# Клонируем репозиторий
-git clone https://github.com/Igroshka/Maxli.git
-cd Maxli
-
-# Создаем виртуальное окружение
-python -m venv venv
-
-# Активируем venv
-venv\Scripts\activate
-
-# Устанавливаем зависимости
-pip install -r requirements.txt
-
-# Запускаем для авторизации
-python main.py
+git clone https://github.com/Igroshka/Maxli.git && cd Maxli && python -m venv venv && venv\Scripts\activate && pip install -r requirements.txt && python main.py
 ```
 
 ## 🐧 Linux
@@ -50,21 +62,7 @@ chmod +x install_linux.sh
 ### Ручная установка
 
 ```bash
-# Клонируем репозиторий
-git clone https://github.com/Igroshka/Maxli.git
-cd Maxli
-
-# Создаем виртуальное окружение
-python3 -m venv venv
-
-# Активируем venv
-source venv/bin/activate
-
-# Устанавливаем зависимости
-pip install -r requirements.txt
-
-# Запускаем для авторизации
-python3 main.py
+git clone https://github.com/Igroshka/Maxli.git && cd Maxli && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python3 main.py
 ```
 
 ## 🔄 Автозапуск
@@ -85,4 +83,29 @@ sudo systemctl enable maxli
 sudo systemctl start maxli
 ```
 
+---
+
 ## 📁 Структура проекта
+
+Maxli/
+├── main.py              # Основной файл
+├── core/                # Ядро бота
+├── modules/             # Модули
+├── pymax/              # Библиотека PyMax
+├── requirements.txt     # Зависимости
+├── install_windows.bat  # Установка для Windows
+├── install_linux.sh     # Установка для Linux
+└── README.md           # Документация
+
+---
+
+## 📜 Лицензия
+
+Этот проект распространяется под лицензией **Apache License 2.0**.
+Подробнее см. в [LICENSE](LICENSE).
+
+---
+
+<p align="center">
+  Made with ❤️ by <a href="https://t.me/YouRooni">YouRooni</a>
+</p>
