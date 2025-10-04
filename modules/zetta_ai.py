@@ -79,7 +79,7 @@ async def watcher(api, message):
     active_chats = db_get("active_chats", {})
     if not message.text or not api.last_known_chat_id or str(api.last_known_chat_id) not in active_chats:
         return
-    if message.sender == api.me.id: return # Игнорируем свои сообщения в вотчере
+     if api.me and message.sender == api.me.id: return # Игнорируем свои сообщения в вотчере
     
     chat_history = db_get("chat_history", {})
     chat_id_str = str(api.last_known_chat_id)
