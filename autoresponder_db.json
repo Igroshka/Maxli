@@ -1,0 +1,10 @@
+{
+    "rules": [
+        {
+            "trigger": "даров",
+            "response": "Ку",
+            "scope": "pm",
+            "is_regex": false
+        }
+    ]
+}

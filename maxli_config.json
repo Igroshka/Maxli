@@ -1,0 +1,19 @@
+{
+    "prefix": ",",
+    "aliases": {
+        "p": "ping",
+        "i": "info",
+        "aa": "addalias",
+        "\u0430\u0430": "addalias",
+        "\u0438\u0438": "ai",
+        "h": "help",
+        "\u0447\u0430": "chat",
+        "ulm": "unload",
+        "\u0443\u043b\u043c": "unload",
+        "lm": "load",
+        "\u043b\u043c": "load",
+        "sm": "sendmodule",
+        "ml": "sendmodule"
+    },
+    "phone": "79133312185"
+}
