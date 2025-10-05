@@ -434,16 +434,30 @@ async def register(commands):
             
             # Обрабатываем как словарь и как объект
             if isinstance(attach0, dict):
-                url = attach0.get('url')
                 name = attach0.get('name', 'backup.zip')
-                print(f"🔍 DEBUG: dict - url={url}, name={name}")
+                file_id = attach0.get('fileId')
+                token = attach0.get('token')
+                url = attach0.get('url')  # Может быть None
+                print(f"🔍 DEBUG: dict - name={name}, fileId={file_id}, token={token}, url={url}")
+                
+                # Если нет прямого URL, генерируем его из fileId и token
+                if not url and file_id and token:
+                    url = f"https://files.oneme.ru/{file_id}/{token}"
+                    print(f"🔍 DEBUG: Сгенерирован URL: {url}")
             else:
                 url = getattr(attach0, 'url', None)
                 name = getattr(attach0, 'name', 'backup.zip')
-                print(f"🔍 DEBUG: object - url={url}, name={name}")
+                file_id = getattr(attach0, 'fileId', None)
+                token = getattr(attach0, 'token', None)
+                print(f"🔍 DEBUG: object - url={url}, name={name}, fileId={file_id}, token={token}")
+                
+                # Если нет прямого URL, генерируем его из fileId и token
+                if not url and file_id and token:
+                    url = f"https://files.oneme.ru/{file_id}/{token}"
+                    print(f"🔍 DEBUG: Сгенерирован URL: {url}")
             
             if not url:
-                await api.edit(message, "❌ Ошибка: не удалось получить URL файла.")
+                await api.edit(message, "❌ Ошибка: не удалось получить URL файла (нет fileId/token или url).")
                 return
                 
             if not name.lower().endswith('.zip'):
