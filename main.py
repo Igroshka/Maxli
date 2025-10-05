@@ -5,7 +5,7 @@ import json
 import websockets
 from pymax import MaxClient, Message
 
-from core.config import config, PREFIX, ALIASES, PHONE
+from core.config import config, ALIASES, PHONE
 from core.loader import load_all_modules, COMMANDS, MODULE_COMMANDS
 from core.api import API, log_critical_error
 
@@ -21,40 +21,53 @@ api = API(client, config)
 @client.on_message()
 async def message_handler(message: Message):
     # chat_id уже добавлен в сообщение модифицированной библиотекой PyMax
+    from core.api import _append_log
     if not hasattr(message, 'chat_id') or not message.chat_id:
-        print(f"⚠️ Сообщение {message.id} не имеет chat_id, пропускаем")
+        _append_log(f"⚠️ Сообщение {message.id} не имеет chat_id, пропускаем")
         return
-    
-    print(f"✅ Обрабатываем сообщение {message.id} в чате {message.chat_id}")
-    
+
+    _append_log(f"✅ Обрабатываем сообщение {message.id} в чате {message.chat_id}")
+
+    # Логируем команду или сообщение (обрезанный текст и полный текст)
+    from core.api import _append_log
+    snippet = (getattr(message, 'text', '') or '')[:80]
+    full_text = getattr(message, 'text', '') or ''
+    _append_log(f"[msg] {snippet}")
+    _append_log(f"[msg-full] {full_text}")
+
     # Обновляем last_known_chat_id для ответов на "Прр"
     api.update_last_known_chat_id(message)
 
-    # --- Обработка загрузки модуля из файла теперь в самой команде load ---
-
-    # --- Обработка "Прр" (только от других) ---
-    if not api.me or message.sender != api.me.id:
-        if message.text and message.text.lower() == "прр":
-            if api.last_known_chat_id:
-                await client.send_message(chat_id=api.last_known_chat_id, text="Ку", notify=True)
-        return # Завершаем, если сообщение не от нас
-
     # --- ЕСЛИ МЫ ЗДЕСЬ, ЗНАЧИТ СООБЩЕНИЕ ОТ НАС И ЭТО КОМАНДА ---
-    if not message.text or (PREFIX and not message.text.startswith(PREFIX)):
+    current_prefix = config.get('prefix', '.')
+    if not message.text or (current_prefix and not message.text.startswith(current_prefix)):
         return
 
-    command_body = message.text[len(PREFIX):]; parts = command_body.split()
+    # Проверяем, что команда от самого бота (но не мешаем обработке автоответчиков и т.п.)
+    is_own = False
+    if hasattr(client, 'me') and client.me and hasattr(message, 'sender'):
+        is_own = (message.sender == client.me.id)
+
+    command_body = message.text[len(current_prefix):]; parts = command_body.split()
     command_name = parts[0].lower(); args = parts[1:]
     resolved_command = ALIASES.get(command_name, command_name)
     handler_info = COMMANDS.get(resolved_command) or MODULE_COMMANDS.get(resolved_command)
 
-    if handler_info:
+    if handler_info and is_own:
         handler = handler_info if callable(handler_info) else handler_info['function']
-        # Просто вызываем команду. API само разберется с chat_id и ошибками.
+        # Логируем команду и полный текст перед выполнением
+        _append_log(f"[command] {command_name} | {full_text}")
         try:
             await handler(api, message, args)
         except Exception as e:
+            # Логируем ошибку в LOG_BUFFER
+            err_text = f"❌ Ошибка выполнения команды {command_name}: {e} | Сообщение: {full_text}"
+            _append_log(err_text)
             await log_critical_error(e, message, client)
+            try:
+                await api.edit(message, err_text)
+            except Exception:
+                pass
 
 
 @client.on_start
@@ -82,5 +95,31 @@ async def startup():
     print("🔧 Используется модифицированная библиотека PyMax с извлечением chat_id")
 
 if __name__ == "__main__":
+    import logging
+    log = logging.getLogger("maxli.LOG_BUFFER")
+    if not log.hasHandlers():
+        handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(asctime)s [LOG_BUFFER] %(message)s")
+        handler.setFormatter(formatter)
+        log.addHandler(handler)
+        log.setLevel(logging.INFO)
     print("Запускаю юзербота...")
-    asyncio.run(client.start())
+
+    import asyncio
+    async def run_with_reconnect():
+        while True:
+            try:
+                await client.start()
+            except (asyncio.CancelledError, asyncio.TimeoutError) as e:
+                import logging
+                logging.getLogger("maxli.LOG_BUFFER").warning(f"[reconnect] [asyncio error] {type(e).__name__}: {e}. Повтор через 2 секунды...")
+                await asyncio.sleep(2)
+            except Exception as e:
+                import logging
+                logging.getLogger("maxli.LOG_BUFFER").warning(f"[reconnect] Ошибка запуска клиента: {e}. Повтор через 2 секунды...")
+                await asyncio.sleep(2)
+            except BaseException as e:
+                import logging
+                logging.getLogger("maxli.LOG_BUFFER").warning(f"[reconnect] [BaseException] {type(e).__name__}: {e}. Повтор через 2 секунды...")
+                await asyncio.sleep(2)
+    asyncio.run(run_with_reconnect())

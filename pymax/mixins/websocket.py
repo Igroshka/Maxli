@@ -53,6 +53,13 @@ class WebSocketMixin(ClientProtocol):
     async def _connect(self, user_agent: dict[str, Any]) -> dict[str, Any]:
         try:
             self.logger.info("Connecting to WebSocket %s", self.uri)
+            # Cancel and await any previous recv_task to avoid concurrency errors
+            if self._recv_task and not self._recv_task.done():
+                self._recv_task.cancel()
+                try:
+                    await self._recv_task
+                except asyncio.CancelledError:
+                    self.logger.debug("Previous recv_task cancelled before reconnect")
             self._ws = await websockets.connect(self.uri, origin="https://web.max.ru")
             self.is_connected = True
             self._incoming = asyncio.Queue()
@@ -185,20 +192,41 @@ class WebSocketMixin(ClientProtocol):
                         except Exception:
                             self.logger.exception("Error in on_message_handler")
 
-            except websockets.exceptions.ConnectionClosed:
-                self.logger.info("WebSocket connection closed; exiting recv loop")
+            except websockets.exceptions.ConnectionClosed as e:
+                msg = "[connection] WebSocket connection closed; exiting recv loop (network issue?)"
+                self.logger.warning(msg)
+                try:
+                    from core.api import LOG_BUFFER, _append_log
+                    _append_log(msg)
+                except Exception:
+                    pass
                 break
-            except Exception:
-                self.logger.exception("Error in recv_loop; backing off briefly")
+            except Exception as e:
+                err_msg = f"[connection] Error in recv_loop: {e}"
+                self.logger.exception(err_msg)
+                try:
+                    from core.api import LOG_BUFFER, _append_log
+                    _append_log(err_msg)
+                except Exception:
+                    pass
                 await asyncio.sleep(0.5)
 
     def _log_task_exception(self, task: asyncio.Task[Any]) -> None:
         try:
+            # Если задача была отменена, task.exception() может выбросить CancelledError.
+            # В этом случае ничего не логируем — это нормальное завершение при закрытии.
+            if task.cancelled():
+                self.logger.debug("Background task was cancelled, skipping exception check")
+                return
             exc = task.exception()
             if exc:
                 self.logger.exception("Background task exception: %s", exc)
+        except asyncio.CancelledError:
+            # Игнорируем отмену — может произойти при одновременном закрытии
+            return
         except Exception:
-            pass
+            # Любые другие ошибки при получении исключения задачи логируем на debug
+            self.logger.debug("Error while fetching task exception", exc_info=True)
 
     @override
     async def _send_and_wait(

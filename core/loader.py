@@ -4,13 +4,13 @@ import sys
 import subprocess
 import re
 from pathlib import Path
-from core.api import BOT_VERSION, MODULES_DIR
+from core.api import BOT_VERSION_CODE, MODULES_DIR
 
 COMMANDS = {}
 MODULE_COMMANDS = {}
 LOADED_MODULES = {}
 WATCHERS = [] # Новый список для вотчеров
-
+ 
 class ModuleAPIWrapper:
     def __init__(self, module_name, api):
         self._module_name = module_name
@@ -84,7 +84,7 @@ def version_to_tuple(v: str):
     except: return (0,0,0)
 
 def parse_module_header(path: Path):
-    header = {"name": path.stem, "version": "1.0.0", "dependencies": [], "min-maxli": "0.0.0"}
+    header = {"name": path.stem, "version": "1.0.0", "dependencies": [], "min-maxli": "0"}
     with open(path, 'r', encoding='utf-8') as f:
         for line in f.readlines()[:10]:
             if line.startswith('#'):
@@ -98,7 +98,11 @@ def parse_module_header(path: Path):
 
 async def load_module(module_path: Path, api):
     module_name = module_path.stem
-    if module_name in LOADED_MODULES: return f"Модуль '{module_name}' уже загружен."
+    # Если модуль уже загружен — сначала аккуратно выгружаем, чтобы поддержать обновление/замену
+    if module_name in LOADED_MODULES:
+        # При перезагрузке не удаляем файл модуля с диска
+        unload_result = await unload_module(module_name, remove_file=False)
+        print(f"🔁 Перезагрузка модуля '{module_name}': {unload_result}")
     
     # Сохраняем состояние до загрузки для возможного отката
     was_module_loaded = module_name in LOADED_MODULES
@@ -106,9 +110,9 @@ async def load_module(module_path: Path, api):
     original_watchers = []
     
     header = parse_module_header(module_path)
-    required_version = version_to_tuple(header["min-maxli"])
-    current_version = version_to_tuple(BOT_VERSION)
-    if current_version < required_version: return f"❌ Ошибка: модуль '{header['name']}' требует Maxli v{header['min-maxli']}. Ваша версия: v{BOT_VERSION}."
+    required_version = int(header["min-maxli"])
+    current_version = BOT_VERSION_CODE
+    if current_version < required_version: return f"❌ Ошибка: модуль '{header['name']}' требует Maxli v{header['min-maxli']}. Ваша версия: v{BOT_VERSION_CODE}."
     
     # Устанавливаем зависимости с возможностью отката
     installed_dependencies = []
@@ -200,7 +204,7 @@ async def rollback_module(module_name, was_loaded, original_commands, original_w
     except Exception as rollback_error:
         print(f"❌ Ошибка при откате модуля '{module_name}': {rollback_error}")
 
-async def unload_module(module_name: str):
+async def unload_module(module_name: str, remove_file: bool = True):
     if module_name not in LOADED_MODULES: return f"Модуль '{module_name}' не загружен."
     # Выгружаем команды
     commands_to_remove = list(LOADED_MODULES[module_name].get('commands', {}).keys())
@@ -213,7 +217,8 @@ async def unload_module(module_name: str):
         
     del LOADED_MODULES[module_name]
     if module_name in sys.modules: del sys.modules[module_name]
-    (MODULES_DIR / f"{module_name}.py").unlink(missing_ok=True)
+    if remove_file:
+        (MODULES_DIR / f"{module_name}.py").unlink(missing_ok=True)
     return f"✅ Модуль '{module_name}' успешно выгружен и удален."
 
 async def register_system_module(module):

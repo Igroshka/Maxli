@@ -4,3 +4,4 @@ sqlmodel
 aiohttp
 aiofiles
 psutil
+gitpython

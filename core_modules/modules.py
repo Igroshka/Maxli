@@ -43,6 +43,16 @@ def fuzzy_find_module(query):
     if not available_modules:
         return None, "Нет доступных модулей"
     
+    # Быстрый полнотекстовый поиск по подстроке в имени и display_name
+    lower_q = query.lower()
+    substring_matches = [m for m in available_modules if lower_q in m['name'].lower() or lower_q in m['display_name'].lower()]
+    if len(substring_matches) == 1:
+        return substring_matches[0], None
+    elif len(substring_matches) > 1:
+        # Если вариантов много — вернём подсказки
+        suggestions = "\n".join([f"• {m['display_name']} ({m['name']})" for m in substring_matches[:5]])
+        return None, f"Найдено несколько вариантов, уточните:\n{suggestions}"
+
     # Проверяем точное совпадение по имени файла
     for module in available_modules:
         if module['name'].lower() == query.lower():
@@ -81,7 +91,7 @@ def fuzzy_find_module(query):
     
     # Если ничего не найдено, возвращаем самые близкие варианты
     all_names = names + display_names
-    close_matches = difflib.get_close_matches(query.lower(), [name.lower() for name in all_names], n=3, cutoff=0.3)
+    close_matches = difflib.get_close_matches(query.lower(), [name.lower() for name in all_names], n=5, cutoff=0.3)
     
     if close_matches:
         suggestions = []

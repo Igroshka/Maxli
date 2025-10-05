@@ -1,23 +1,48 @@
 import asyncio
 import json
 from pathlib import Path
+import traceback
 import aiohttp
 import aiofiles
 
 # --- КОНФИГУРАЦИЯ БОТА ---
 BOT_NAME = "Maxli"
-BOT_VERSION = "0.2.6" # Повышаем версию
-BOT_VERSION_CODE = 26
+BOT_VERSION = "0.2.8" # Повышаем версию
+BOT_VERSION_CODE = 28
 MODULES_DIR = Path("modules")
+LOG_BUFFER = []  # Глобальный буфер логов (последние строки)
+
+def _append_log(text: str):
+    import logging
+    try:
+        lines = text.splitlines()
+        LOG_BUFFER.extend(lines)
+        # Также пишем каждую строку в стандартный логгер
+        logger = logging.getLogger("maxli.LOG_BUFFER")
+        for line in lines:
+            logger.info(line)
+        # Ограничиваем размер буфера
+        max_lines = 5000
+        if len(LOG_BUFFER) > max_lines:
+            del LOG_BUFFER[: len(LOG_BUFFER) - max_lines]
+    except Exception:
+        pass
 
 # --- ФУНКЦИЯ ДЛЯ СУПЕР-ОТЛАДКИ ---
 async def log_critical_error(e, message, client, chat_id=None):
-    print("\n" + "="*50)
-    print("!!! КРИТИЧЕСКАЯ ОШИБКА ВЫПОЛНЕНИЯ КОМАНДЫ !!!")
-    print(f"Команда: {message.text}")
-    print(f"Ошибка: {e.__class__.__name__}: {e}")
+    header = "\n" + "="*50 + "\n" + "!!! КРИТИЧЕСКАЯ ОШИБКА ВЫПОЛНЕНИЯ КОМАНДЫ !!!"\
+        + f"\nКоманда: {getattr(message, 'text', '')}"\
+        + f"\nОшибка: {e.__class__.__name__}: {e}\n"
+    print(header)
+    _append_log(header)
     print("--- JSON СООБЩЕНИЯ, ВЫЗВАВШЕГО ОШИБКУ ---")
     log_message_json(message, "")
+    try:
+        # Добавляем traceback в буфер логов
+        tb = ''.join(traceback.format_exception(type(e), e, e.__traceback__))
+        _append_log(tb)
+    except Exception:
+        pass
     
     if not chat_id:
         print("--- Попытка найти chat_id для отладки... ---")
@@ -57,6 +82,8 @@ class API:
         self.BOT_NAME = BOT_NAME
         self.BOT_VERSION = BOT_VERSION
         self.BOT_VERSION_CODE = BOT_VERSION_CODE
+        # Доступ к буферу логов из инстанса
+        self.LOG_BUFFER = LOG_BUFFER
 
     def set_me(self, me_instance):
         self.me = me_instance
@@ -196,7 +223,11 @@ class API:
             await log_critical_error(e, message, self.client, chat_id)
 
     async def send(self, chat_id, text, **kwargs):
-        return await self.client.send_message(chat_id=chat_id, text=text, **kwargs)
+        # client.send_message requires a 'notify' parameter (no default in pymax mixin).
+        # Подставляем значение по умолчанию, если не передано модулем.
+        notify = kwargs.pop("notify", False)
+        # Передаём ключи по именам, чтобы соответствовать сигнатуре MessageMixin.send_message
+        return await self.client.send_message(text=text, chat_id=chat_id, notify=notify, **kwargs)
     
     async def send_file(self, chat_id, file_path, text="", **kwargs):
         """Отправляет файл в чат."""
@@ -247,42 +278,68 @@ class API:
     async def send_photo(self, chat_id, file_path, text="", **kwargs):
         """Отправляет фотографию в чат."""
         try:
-            from pathlib import Path
             import aiofiles
+            import aiohttp
+            import tempfile
+            import os
+            from pathlib import Path
             from pymax.files import Photo
             from pymax.static import AttachType
-            
-            file_path = Path(file_path)
+
+            is_url = isinstance(file_path, str) and (file_path.startswith('http://') or file_path.startswith('https://'))
+            temp_file = None
+            if is_url:
+                # Скачиваем файл во временную папку
+                print(f"🌐 Скачиваем изображение из URL: {file_path}")
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(file_path) as resp:
+                        if resp.status != 200:
+                            raise FileNotFoundError(f"Не удалось скачать файл по URL: {file_path}")
+                        suffix = os.path.splitext(file_path)[-1] or '.jpg'
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+                            temp_file = tmp.name
+                            content = await resp.read()
+                            tmp.write(content)
+                file_path = Path(temp_file)
+            else:
+                file_path = Path(file_path)
             if not file_path.exists():
                 raise FileNotFoundError(f"Файл {file_path} не найден")
-            
+
             print(f"🔍 DEBUG: Отправляем фотографию {file_path.name} в чат {chat_id}")
-            
+
             # Создаем объект Photo
             photo = Photo(path=str(file_path))
-            
+
             # Валидируем фотографию
             photo_data = photo.validate_photo()
             if not photo_data:
                 raise ValueError(f"Файл {file_path.name} не является валидной фотографией")
-            
+
             print(f"✅ Фотография валидна: {photo_data[0]} ({photo_data[1]})")
-            
+
             # Загружаем фотографию через PyMax
             attach = await self.client._upload_photo(photo)
             if not attach:
                 raise Exception("Не удалось загрузить фотографию на сервер")
-            
+
             print(f"✅ Фотография загружена на сервер")
-            
+
             # Отправляем сообщение с фотографией
-            return await self.client.send_message(
+            result = await self.client.send_message(
                 chat_id=chat_id,
                 text=text,
                 photo=photo,
                 notify=kwargs.get('notify', True)
             )
-            
+            # Удаляем временный файл, если был скачан
+            if temp_file:
+                try:
+                    os.remove(temp_file)
+                except Exception as e:
+                    print(f"⚠️ Не удалось удалить временный файл: {temp_file} — {e}")
+            return result
+
         except Exception as e:
             print(f"❌ Ошибка отправки фотографии: {e}")
             import traceback

@@ -117,7 +117,7 @@ class MaxClient(ApiMixin, WebSocketMixin):
         пользователя (если нужно) и запускает фоновый цикл.
         """
         try:
-            self.logger.info("Client starting")
+            self.logger.info("Запуск клиента")
             await self._connect(self.user_agent)
 
             if self._token and self._database.get_auth_token() is None:
@@ -147,9 +147,10 @@ class MaxClient(ApiMixin, WebSocketMixin):
                 except asyncio.CancelledError:
                     self.logger.debug("wait_closed cancelled")
         except Exception:
-            self.logger.exception("Client start failed")
+            self.logger.exception("Ошибка запуска клиента")
 
 
 class SocketMaxClient:
     pass  # нокс займись
     # нет не займусь 
+    # хмм шо тут должно быть - Rooni

@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-User=your_username
+User=root
 WorkingDirectory=/path/to/Maxli
 ExecStart=/path/to/Maxli/venv/bin/python3 main.py
 Restart=always

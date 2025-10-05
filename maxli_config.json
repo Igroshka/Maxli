@@ -1,0 +1,35 @@
+{
+    "prefix": ",",
+    "aliases": {
+        "i": "info",
+        "aa": "addalias",
+        "h": "help",
+        "cfg": "config",
+        "lm": "load",
+        "ml": "sendmodule",
+        "ulm": "unload",
+        "p": "ping",
+        "gi": "genimg",
+        "fcfg": "configset"
+    },
+    "external_modules": {
+        "genimg": {
+            "settings": {
+                "model": "flux",
+                "width": 1024,
+                "height": 1024,
+                "enchant": true
+            },
+            "descriptions": {
+                "model": "Модель генерации (flux/turbo)",
+                "width": "Ширина изображения",
+                "height": "Высота изображения",
+                "enchant": "Улучшение промпта (enchant)"
+            }
+        }
+    },
+    "info": {
+        "custom_message": null,
+        "banner_url": ""
+    }
+}
