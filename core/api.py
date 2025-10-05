@@ -775,3 +775,45 @@ class API:
                 else: await self.client.edit_message(chat_id=chat_id, message_id=message.id, text=f"❌ Ошибка скачивания: {resp.status}")
         except Exception as e:
             await log_critical_error(e, message, self.client, chat_id)
+    
+    async def get_user_name(self, user_id):
+        """Получает имя пользователя по его ID."""
+        try:
+            if not user_id:
+                return "Неизвестный пользователь"
+            
+            # Получаем пользователя из кеша или запрашиваем
+            user = await self.client.get_user(user_id)
+            if user and user.names:
+                # Возвращаем первое доступное имя
+                return user.names[0].name
+            else:
+                return f"Пользователь {user_id}"
+        except Exception as e:
+            print(f"❌ Ошибка получения имени пользователя {user_id}: {e}")
+            return f"Пользователь {user_id}"
+    
+    async def get_user_info(self, user_id):
+        """Получает полную информацию о пользователе по его ID."""
+        try:
+            if not user_id:
+                return None
+            
+            user = await self.client.get_user(user_id)
+            return user
+        except Exception as e:
+            print(f"❌ Ошибка получения информации о пользователе {user_id}: {e}")
+            return None
+    
+    def get_sender_name(self, message):
+        """Получает имя отправителя сообщения (синхронная версия)."""
+        sender_id = getattr(message, 'sender', None)
+        if not sender_id:
+            return "Неизвестный пользователь"
+        
+        # Пытаемся получить из кеша
+        user = self.client.get_cached_user(sender_id)
+        if user and user.names:
+            return user.names[0].name
+        
+        return f"Пользователь {sender_id}"

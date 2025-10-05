@@ -1,6 +1,7 @@
 # name: SpeedTest
 # version: 1.0.0
 # developer: @gemeguardian
+# id: speedtest_module
 # dependencies: speedtest-cli
 # min-maxli: 26
 
