@@ -7,8 +7,8 @@ import aiofiles
 
 # --- КОНФИГУРАЦИЯ БОТА ---
 BOT_NAME = "Maxli"
-BOT_VERSION = "0.2.8.1" # Повышаем версию
-BOT_VERSION_CODE = 29
+BOT_VERSION = "0.2.9" # Повышаем версию
+BOT_VERSION_CODE = 30
 MODULES_DIR = Path("modules")
 LOG_BUFFER = []  # Глобальный буфер логов (последние строки)
 

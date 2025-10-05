@@ -470,6 +470,26 @@ async def register(commands):
 
             tmpf = Path(tempfile.mktemp(suffix='.zip'))
 
+            # Используем API для получения URL файла
+            try:
+                if isinstance(attach0, dict):
+                    file_id = attach0.get('fileId')
+                    token = attach0.get('token')
+                else:
+                    file_id = getattr(attach0, 'fileId', None)
+                    token = getattr(attach0, 'token', None)
+                
+                if file_id and token:
+                    # Получаем URL через API
+                    file_url = await api.get_file_url(file_id, token, message.id, chat_id)
+                    if not file_url:
+                        await api.edit(message, "❌ Не удалось получить URL файла через API.")
+                        return
+                    print(f"🔍 DEBUG: Получен URL через API: {file_url}")
+                    url = file_url
+            except Exception as e:
+                print(f"⚠️ Ошибка получения URL через API: {e}, используем прямой URL")
+
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:
                     if resp.status != 200:
