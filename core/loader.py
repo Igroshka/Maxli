@@ -322,8 +322,19 @@ async def load_all_modules(api):
     await register_system_module(modules); await register_system_module(restart)
     MODULES_DIR.mkdir(exist_ok=True)
     print("--- Автозагрузка пользовательских модулей ---")
+    loaded_files = set()  # Отслеживаем загруженные файлы
     for file in MODULES_DIR.glob("*.py"):
         if file.stem != "__init__":
-            result = await load_module(file, api)
-            print(f"  - {file.name}: {result}")
+            # Проверяем, не был ли этот файл уже загружен (переименован)
+            if file.name not in loaded_files:
+                result = await load_module(file, api)
+                print(f"  - {file.name}: {result}")
+                # Если файл был переименован, добавляем новое имя в список
+                if "переименован" in result or "успешно загружен" in result:
+                    # Получаем новое имя файла из результата или из MODULE_IDS
+                    for module_id, module_name in MODULE_IDS.items():
+                        if module_name == file.stem:
+                            loaded_files.add(f"{module_id}.py")
+                            break
+                loaded_files.add(file.name)
     print("---------------------------------------")

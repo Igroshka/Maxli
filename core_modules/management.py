@@ -395,12 +395,15 @@ async def register(commands):
             if not chat_id:
                 chat_id = await api.await_chat_id(message)
             
-            if chat_id and hasattr(message, 'reply_to_message'):
+            if chat_id and hasattr(message, 'reply_to_message') and message.reply_to_message:
                 # Если есть reply_to_message, ищем файл в нем
                 reply_msg = message.reply_to_message
+                print(f"🔍 Проверяем reply_to_message: {reply_msg}")
                 if reply_msg and hasattr(reply_msg, 'attaches') and reply_msg.attaches:
                     attach = reply_msg.attaches
                     print(f"🔍 Найден файл в ответе на сообщение: {len(attach)} вложений")
+                else:
+                    print(f"🔍 В reply_to_message нет attaches: {hasattr(reply_msg, 'attaches') if reply_msg else 'None'}")
             else:
                 # Пытаемся найти последнее сообщение с файлом в чате
                 try:
