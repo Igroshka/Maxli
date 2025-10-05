@@ -1,0 +1,16 @@
+cat > .gitignore << 'EOF'
+
+venv/
+
+*.db
+*.sqlite3
+__pycache__/
+*.pyc
+
+build/
+dist/
+Python-*/
+
+*.json
+!example_config.json
+EOF
