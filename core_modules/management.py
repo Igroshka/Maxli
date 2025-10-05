@@ -29,12 +29,22 @@ async def unload_command(api, message, args):
     if not module:
         await api.edit(message, f"❌ {error}")
         return
-    # Если модуль не загружен, но найден файл — сообщаем
-    if not module.get('loaded'):
-        await api.edit(message, f"❌ Модуль '{module['display_name']}' не загружен.")
-        return
-    response = await unload_module(module['name'])
-    await api.edit(message, f"Вывод:\n{response}")
+    
+    # Если модуль загружен — выгружаем его
+    if module.get('loaded'):
+        response = await unload_module(module['name'])
+        await api.edit(message, f"Вывод:\n{response}")
+    else:
+        # Если модуль не загружен, но найден файл — удаляем файл
+        try:
+            file_path = module['file_path']
+            if file_path.exists():
+                file_path.unlink()
+                await api.edit(message, f"✅ Файл модуля '{module['display_name']}' удален с диска.")
+            else:
+                await api.edit(message, f"❌ Файл модуля '{module['display_name']}' не найден на диске.")
+        except Exception as e:
+            await api.edit(message, f"❌ Ошибка удаления файла модуля: {e}")
 
 async def modules_command(api, message, args):
     if not LOADED_MODULES: await api.edit(message, "📦 Нет загруженных модулей."); return
@@ -388,40 +398,30 @@ async def register(commands):
         # Иначе — ожидаем zip во вложении
         attach = getattr(message, 'attaches', None)
         
-        # Если нет attach, пробуем найти файл в ответе на сообщение
+        # Если нет attach, пробуем найти файл в ответе на сообщение (как в modules.py)
         if not attach:
-            # Получаем chat_id для поиска сообщения
-            chat_id = getattr(message, 'chat_id', None)
-            if not chat_id:
-                chat_id = await api.await_chat_id(message)
-            
-            if chat_id and hasattr(message, 'reply_to_message') and message.reply_to_message:
-                # Если есть reply_to_message, ищем файл в нем
+            print("🔍 DEBUG: В текущем сообщении нет вложений, проверяем reply_to_message...")
+            if hasattr(message, 'reply_to_message') and message.reply_to_message:
                 reply_msg = message.reply_to_message
-                print(f"🔍 Проверяем reply_to_message: {reply_msg}")
-                if reply_msg and hasattr(reply_msg, 'attaches') and reply_msg.attaches:
-                    attach = reply_msg.attaches
-                    print(f"🔍 Найден файл в ответе на сообщение: {len(attach)} вложений")
+                print(f"🔍 DEBUG: Обнаружен ответ на сообщение, проверяем вложения...")
+                
+                if isinstance(reply_msg, dict):
+                    # reply_to_message это словарь
+                    reply_attaches = reply_msg.get('attaches', [])
+                    if reply_attaches:
+                        print("🔍 DEBUG: В исходном сообщении есть вложения (dict), используем их...")
+                        attach = reply_attaches
+                    else:
+                        print("🔍 DEBUG: В исходном сообщении (dict) нет вложений")
                 else:
-                    print(f"🔍 В reply_to_message нет attaches: {hasattr(reply_msg, 'attaches') if reply_msg else 'None'}")
+                    # reply_to_message это объект
+                    if hasattr(reply_msg, 'attaches') and reply_msg.attaches:
+                        print("🔍 DEBUG: В исходном сообщении есть вложения (object), используем их...")
+                        attach = reply_msg.attaches
+                    else:
+                        print("🔍 DEBUG: В исходном сообщении (object) нет вложений")
             else:
-                # Пытаемся найти последнее сообщение с файлом в чате
-                try:
-                    # Ищем в диалогах и чатах
-                    all_convs = api.client.dialogs + api.client.chats
-                    target_chat = None
-                    for conv in all_convs:
-                        if conv.id == chat_id:
-                            target_chat = conv
-                            break
-                    
-                    if target_chat and target_chat.last_message:
-                        last_msg = target_chat.last_message
-                        if hasattr(last_msg, 'attaches') and last_msg.attaches:
-                            attach = last_msg.attaches
-                            print(f"🔍 Найден файл в последнем сообщении чата: {len(attach)} вложений")
-                except Exception as e:
-                    print(f"⚠️ Ошибка поиска файла в чате: {e}")
+                print("🔍 DEBUG: Нет reply_to_message")
         
         if not attach:
             await api.edit(message, "⚠️ Прикрепите zip-файл с бэкапом к сообщению или ответьте на сообщение с файлом и вызовите loadbackup.")
