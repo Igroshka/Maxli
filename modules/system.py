@@ -83,7 +83,7 @@ def get_running_services():
 
 async def sysinfo_command(api, message, args):
     """Показать информацию о системе/сервере (CPU, RAM, диск, аптайм и др.)"""
-    lang = "ru" if hasattr(api, "lang") and api.lang == "ru" else "en"
+    lang = "ru"
     await api.edit(message, strings[lang]["loading"])
     try:
         current_process = psutil.Process(os.getpid())

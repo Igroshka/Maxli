@@ -7,8 +7,8 @@ import aiofiles
 
 # --- КОНФИГУРАЦИЯ БОТА ---
 BOT_NAME = "Maxli"
-BOT_VERSION = "0.2.8" # Повышаем версию
-BOT_VERSION_CODE = 28
+BOT_VERSION = "0.2.8.1" # Повышаем версию
+BOT_VERSION_CODE = 29
 MODULES_DIR = Path("modules")
 LOG_BUFFER = []  # Глобальный буфер логов (последние строки)
 
@@ -223,10 +223,8 @@ class API:
             await log_critical_error(e, message, self.client, chat_id)
 
     async def send(self, chat_id, text, **kwargs):
-        # client.send_message requires a 'notify' parameter (no default in pymax mixin).
-        # Подставляем значение по умолчанию, если не передано модулем.
         notify = kwargs.pop("notify", False)
-        # Передаём ключи по именам, чтобы соответствовать сигнатуре MessageMixin.send_message
+        
         return await self.client.send_message(text=text, chat_id=chat_id, notify=notify, **kwargs)
     
     async def send_file(self, chat_id, file_path, text="", **kwargs):

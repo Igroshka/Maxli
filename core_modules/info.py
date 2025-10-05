@@ -147,7 +147,7 @@ class InfoModule:
                         async with session.get(banner_url) as resp:
                             if resp.status != 200:
                                 # Если скачать не удалось, отправляем просто текст
-                                await api.send_message(chat_id, info_text, notify=True)
+                                await api.send(chat_id, info_text, notify=True) 
                                 return
                             suffix = os.path.splitext(banner_url)[-1] or '.jpg'
                             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -161,9 +161,9 @@ class InfoModule:
                 photo_data = photo.validate_photo()
                 if not photo_data:
                     # Если фото невалидно, отправляем просто текст
-                    await api.send_message(chat_id, info_text, notify=True)
+                    await api.send(chat_id, info_text, notify=True)
                     return
-                await api.client.send_message(
+                await api.send_photo(
                     chat_id=chat_id,
                     text=info_text,
                     photo=photo,
@@ -172,11 +172,10 @@ class InfoModule:
                 return
         
         # Если баннера нет или не удалось отправить, отправляем как обычное сообщение
-        # Используем send_message, так как исходное уже удалено
         chat_id = getattr(message, 'chat_id', None)
         if not chat_id:
             chat_id = await api.await_chat_id(message)
-        await api.send_message(chat_id, info_text, notify=True)
+        await api.send(chat_id, info_text, notify=True)
 
 
     async def setinfo_command(self, api, message, args):
