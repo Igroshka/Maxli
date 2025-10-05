@@ -159,16 +159,23 @@ async def load_module(module_path: Path, api):
     if not is_valid:
         return f"❌ Ошибка валидации ID модуля: {error_msg}"
     
-    # Проверка на дублирование ID
-    is_duplicate, duplicate_msg = check_duplicate_module_id(module_id, module_name)
-    if is_duplicate:
-        return f"❌ Ошибка дублирования ID: {duplicate_msg}"
+    # Проверка на дублирование ID (только если это не перезагрузка того же модуля)
+    if module_name not in LOADED_MODULES:
+        is_duplicate, duplicate_msg = check_duplicate_module_id(module_id, module_name)
+        if is_duplicate:
+            return f"❌ Ошибка дублирования ID: {duplicate_msg}"
     
     # Переименование файла модуля по ID, если ID отличается от имени файла
     if module_id != module_name:
         new_module_path = module_path.parent / f"{module_id}.py"
+        
+        # Если файл с ID уже существует и это не тот же файл, удаляем старый
         if new_module_path.exists() and new_module_path != module_path:
-            return f"❌ Ошибка: файл с ID '{module_id}' уже существует: {new_module_path.name}"
+            try:
+                new_module_path.unlink()
+                print(f"🗑️ Удален старый файл модуля: {new_module_path.name}")
+            except Exception as e:
+                print(f"⚠️ Не удалось удалить старый файл: {e}")
         
         try:
             # Переименовываем файл

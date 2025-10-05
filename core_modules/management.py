@@ -387,9 +387,39 @@ async def register(commands):
 
         # Иначе — ожидаем zip во вложении
         attach = getattr(message, 'attaches', None)
-        # Если нет attach, пробуем взять файл из reply_to.attaches
-        if not attach and hasattr(message, 'reply_to') and getattr(message.reply_to, 'attaches', None):
-            attach = getattr(message.reply_to, 'attaches', None)
+        
+        # Если нет attach, пробуем найти файл в ответе на сообщение
+        if not attach:
+            # Получаем chat_id для поиска сообщения
+            chat_id = getattr(message, 'chat_id', None)
+            if not chat_id:
+                chat_id = await api.await_chat_id(message)
+            
+            if chat_id and hasattr(message, 'reply_to_message'):
+                # Если есть reply_to_message, ищем файл в нем
+                reply_msg = message.reply_to_message
+                if reply_msg and hasattr(reply_msg, 'attaches') and reply_msg.attaches:
+                    attach = reply_msg.attaches
+                    print(f"🔍 Найден файл в ответе на сообщение: {len(attach)} вложений")
+            else:
+                # Пытаемся найти последнее сообщение с файлом в чате
+                try:
+                    # Ищем в диалогах и чатах
+                    all_convs = api.client.dialogs + api.client.chats
+                    target_chat = None
+                    for conv in all_convs:
+                        if conv.id == chat_id:
+                            target_chat = conv
+                            break
+                    
+                    if target_chat and target_chat.last_message:
+                        last_msg = target_chat.last_message
+                        if hasattr(last_msg, 'attaches') and last_msg.attaches:
+                            attach = last_msg.attaches
+                            print(f"🔍 Найден файл в последнем сообщении чата: {len(attach)} вложений")
+                except Exception as e:
+                    print(f"⚠️ Ошибка поиска файла в чате: {e}")
+        
         if not attach:
             await api.edit(message, "⚠️ Прикрепите zip-файл с бэкапом к сообщению или ответьте на сообщение с файлом и вызовите loadbackup.")
             return

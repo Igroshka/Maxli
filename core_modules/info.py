@@ -123,7 +123,7 @@ class InfoModule:
             f"    🐍 Python: {python_version}\n"
             f"    🧠 CPU: {cpu_display}\n"
             f"    💾 RAM: {ram_display}\n\n"
-            f"📝 Префикс: {PREFIX if PREFIX else 'Нет'}"
+            f"📝 Префикс: '{PREFIX if PREFIX else '.'}'"
         )
         banner = self.config.get('banner_url')
         if banner:
