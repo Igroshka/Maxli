@@ -13,4 +13,6 @@ Python-*/
 
 *.json
 !example_config.json
+
+modules/
 EOF
