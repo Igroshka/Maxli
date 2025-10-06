@@ -191,10 +191,10 @@ class API:
                     self.message_to_chat_cache[message_id_int] = dialog.id
                     return dialog.id
             
-            # Если диалог не найден, используем ID пользователя как fallback
-            print(f"⚠️ Чат 'Избранное' не найден в диалогах, используем ID пользователя")
-            self.message_to_chat_cache[message_id_int] = self.me.id
-            return self.me.id
+            # Если диалог не найден, используем ID = 0 для "Избранного"
+            print(f"⚠️ Чат 'Избранное' не найден в диалогах, используем ID = 0")
+            self.message_to_chat_cache[message_id_int] = 0
+            return 0
         
         return None
 
@@ -242,16 +242,14 @@ class API:
         notify = kwargs.pop("notify", False)
         
         # Проверяем валидность chat_id
-        if not chat_id or chat_id == 0:
+        if not chat_id:
             print(f"❌ Некорректный chat_id в send: {chat_id}")
             return None
         
         # Специальная обработка для чата "Избранное"
-        if chat_id == self.me.id:
+        if chat_id == 0:
             print(f"🔧 Отправка в чат 'Избранное' с ID: {chat_id}")
-            # Для чата "Избранное" используем ID пользователя
-            print(f"🔧 Используем ID пользователя для отправки в 'Избранное'")
-            print(f"🔧 Используем ID пользователя для отправки в 'Избранное'")
+            print(f"🔧 Используем ID = 0 для отправки в 'Избранное'")
         
         # Если включен markdown, парсим текст
         if markdown:
@@ -279,7 +277,7 @@ class API:
             import time
             
             # Проверяем валидность chat_id
-            if not chat_id or chat_id == 0:
+            if not chat_id:
                 print(f"❌ Некорректный chat_id: {chat_id}")
                 return None
             
@@ -332,7 +330,7 @@ class API:
             import time
             
             # Проверяем валидность chat_id
-            if not chat_id or chat_id == 0:
+            if not chat_id:
                 print(f"❌ Некорректный chat_id в _send_photo_with_elements: {chat_id}")
                 return None
             
@@ -458,7 +456,7 @@ class API:
             import time
             
             # Проверяем валидность chat_id
-            if not chat_id or chat_id == 0:
+            if not chat_id:
                 print(f"❌ Некорректный chat_id в _send_file_with_elements: {chat_id}")
                 return None
             
