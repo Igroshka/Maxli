@@ -152,6 +152,12 @@ class API:
                 print(f"✅ Найден чат {chat.id} по ID последнего сообщения")
                 self.message_to_chat_cache[message_id_int] = chat.id
                 return chat.id
+        
+        # 2.5. Специальная проверка для "Избранного" - если сообщение от нас и chat_id = 0
+        if hasattr(self, 'me') and self.me and message.sender == self.me.id and hasattr(message, 'chat_id') and message.chat_id == 0:
+            print(f"✅ Сообщение из 'Избранного' (chat_id=0), используем ID = 0")
+            self.message_to_chat_cache[message_id_int] = 0
+            return 0
 
         # 3. Ожидаем обновления чатов (основной способ)
         print(f"⏳ Ожидаем обновления чатов...")
@@ -245,8 +251,8 @@ class API:
     async def send(self, chat_id, text, markdown=False, **kwargs):
         notify = kwargs.pop("notify", False)
         
-        # Проверяем валидность chat_id
-        if not chat_id:
+        # Проверяем валидность chat_id (0 - это валидный ID для "Избранного")
+        if chat_id is None:
             print(f"❌ Некорректный chat_id в send: {chat_id}")
             return None
         
@@ -281,7 +287,7 @@ class API:
             import time
             
             # Проверяем валидность chat_id
-            if not chat_id:
+            if chat_id is None:
                 print(f"❌ Некорректный chat_id: {chat_id}")
                 return None
             
@@ -334,7 +340,7 @@ class API:
             import time
             
             # Проверяем валидность chat_id
-            if not chat_id:
+            if chat_id is None:
                 print(f"❌ Некорректный chat_id в _send_photo_with_elements: {chat_id}")
                 return None
             
@@ -460,7 +466,7 @@ class API:
             import time
             
             # Проверяем валидность chat_id
-            if not chat_id:
+            if chat_id is None:
                 print(f"❌ Некорректный chat_id в _send_file_with_elements: {chat_id}")
                 return None
             

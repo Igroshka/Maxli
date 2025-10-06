@@ -49,8 +49,8 @@ class MarkdownParser:
                 # Находим все совпадения в текущем тексте
                 matches = list(pattern.finditer(clean_text))
                 
-                # Обрабатываем совпадения в обратном порядке, чтобы не сбивать позиции
-                for match in reversed(matches):
+                # Обрабатываем совпадения в прямом порядке
+                for match in matches:
                     content_length = len(match.group(1))
                     start_pos = match.start()
                     
