@@ -233,7 +233,14 @@ async def help_command(api, message, args):
         else:
             response = f"📖 Справка по модулю \"{found_module['header'].get('name')}\"\n"
             ver = found_module['header'].get('version', 'N/A'); dev = found_module['header'].get('developer', 'N/A')
-            response += f"Версия: {ver} | Автор: {dev}\n\n"
+            response += f"Версия: {ver} | Автор: {dev}\n"
+            
+            # Добавляем описание модуля, если оно есть
+            description = found_module['header'].get('description')
+            if description:
+                response += f"📝 Описание: {description}\n"
+            
+            response += "\n"
             for cmd, desc in found_module['commands'].items():
                 response += f"▫️ {PREFIX}{cmd} - {desc}\n"
     

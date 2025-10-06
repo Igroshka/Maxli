@@ -121,16 +121,26 @@ def check_duplicate_module_id(module_id: str, module_name: str) -> tuple[bool, s
     return False, ""
 
 def parse_module_header(path: Path):
-    header = {"name": path.stem, "version": "1.0.0", "dependencies": [], "min-maxli": "0", "id": None}
+    header = {
+        "name": None, 
+        "version": None, 
+        "developer": None, 
+        "dependencies": [], 
+        "min-maxli": None, 
+        "id": None,
+        "description": None
+    }
     with open(path, 'r', encoding='utf-8') as f:
-        for line in f.readlines()[:10]:
+        for line in f.readlines()[:15]:  # Увеличиваем количество строк для поиска
             if line.startswith('#'):
-                for key in ["name", "version", "developer", "dependencies", "min-maxli", "id"]:
+                for key in ["name", "version", "developer", "dependencies", "min-maxli", "id", "description"]:
                     match = re.search(rf"^\s*#\s*{key}\s*:\s*(.+)", line)
                     if match:
                         value = match.group(1).strip()
-                        if key == "dependencies": header[key] = [d.strip() for d in value.split(',') if d.strip()]
-                        else: header[key] = value
+                        if key == "dependencies": 
+                            header[key] = [d.strip() for d in value.split(',') if d.strip()]
+                        else: 
+                            header[key] = value
     
     # Если ID не указан, используем имя файла как ID
     if not header["id"]:
@@ -152,6 +162,13 @@ async def load_module(module_path: Path, api):
     original_watchers = []
     
     header = parse_module_header(module_path)
+    
+    # Валидация обязательных полей
+    required_fields = ["name", "version", "developer", "min-maxli", "id"]
+    missing_fields = [field for field in required_fields if not header.get(field)]
+    
+    if missing_fields:
+        return f"❌ Отсутствуют обязательные поля в метаданных модуля: {', '.join(missing_fields)}. Модуль не может быть загружен."
     
     # Валидация ID модуля
     module_id = header["id"]

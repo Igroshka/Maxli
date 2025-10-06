@@ -162,8 +162,14 @@ class WebSocketMixin(ClientProtocol):
                                         print(f"🔧 PyMax: добавлен chat_id {chat_id} к сообщению {msg.id}")
                                         self.logger.debug(f"Added chat_id {chat_id} to message {msg.id}")
                                     else:
-                                        print(f"⚠️ PyMax: chat_id не найден в payload для сообщения {msg.id}")
-                                        print(f"   Payload keys: {list(payload.keys())}")
+                                        # Fallback для чата "Избранное" - используем ID отправителя
+                                        if hasattr(self, 'me') and self.me and msg.sender == self.me.id:
+                                            # Для сообщений от нас самих используем наш ID как chat_id
+                                            msg.chat_id = self.me.id
+                                            print(f"🔧 PyMax: установлен chat_id для 'Избранного': {self.me.id} к сообщению {msg.id}")
+                                        else:
+                                            print(f"⚠️ PyMax: chat_id не найден в payload для сообщения {msg.id}")
+                                            print(f"   Payload keys: {list(payload.keys())}")
                                     
                                     # Обрабатываем поле link для ответов на сообщения
                                     message_data = payload.get("message", {})
