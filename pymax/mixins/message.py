@@ -14,6 +14,7 @@ from pymax.payloads import (
     ReplyLink,
     SendMessagePayload,
     SendMessagePayloadMessage,
+    SetReactionPayload,
     UploadPhotoPayload,
 )
 from pymax.static import AttachType, Opcode
@@ -295,3 +296,43 @@ class MessageMixin(ClientProtocol):
         except Exception:
             self.logger.exception("Fetch history failed")
             return None
+
+    async def set_reaction(
+        self, chat_id: int, message_id: str, reaction_id: str, reaction_type: str = "EMOJI"
+    ) -> bool:
+        """
+        Устанавливает реакцию на сообщение.
+
+        Args:
+            chat_id (int): ID чата
+            message_id (str): ID сообщения
+            reaction_id (str): ID реакции (например, "❤️")
+            reaction_type (str): Тип реакции (по умолчанию "EMOJI")
+
+        Returns:
+            bool: True, если реакция установлена успешно
+        """
+        try:
+            self.logger.info(
+                "Setting reaction chat_id=%s message_id=%s reaction_id=%s",
+                chat_id, message_id, reaction_id
+            )
+
+            payload = SetReactionPayload(
+                chat_id=chat_id,
+                message_id=message_id,
+                reaction={
+                    "reactionType": reaction_type,
+                    "id": reaction_id
+                }
+            ).model_dump(by_alias=True)
+
+            data = await self._send_and_wait(opcode=Opcode.MSG_REACTION, payload=payload)
+            if error := data.get("payload", {}).get("error"):
+                self.logger.error("Set reaction error: %s", error)
+                return False
+            self.logger.debug("set_reaction success")
+            return True
+        except Exception:
+            self.logger.exception("Set reaction failed")
+            return False

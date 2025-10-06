@@ -222,12 +222,135 @@ class API:
             print(f"❌ Ошибка при редактировании: {e}")
             await log_critical_error(e, message, self.client, chat_id)
 
-    async def send(self, chat_id, text, **kwargs):
+    async def send(self, chat_id, text, markdown=False, **kwargs):
         notify = kwargs.pop("notify", False)
         
-        return await self.client.send_message(text=text, chat_id=chat_id, notify=notify, **kwargs)
+        # Если включен markdown, парсим текст
+        if markdown:
+            from pymax.markdown_parser import markdown_parser
+            clean_text, elements = markdown_parser.parse_to_max_format(text)
+            print(f"📝 Markdown парсинг: '{text}' -> '{clean_text}' с {len(elements)} элементами")
+            print(f"🔍 Элементы: {elements}")
+            
+            # Отправляем сообщение с элементами форматирования
+            return await self._send_message_with_elements(
+                chat_id=chat_id, 
+                text=clean_text, 
+                elements=elements, 
+                notify=notify, 
+                **kwargs
+            )
+        else:
+            return await self.client.send_message(text=text, chat_id=chat_id, notify=notify, **kwargs)
     
-    async def send_file(self, chat_id, file_path, text="", **kwargs):
+    async def _send_message_with_elements(self, chat_id, text, elements, notify=False, **kwargs):
+        """Отправляет сообщение с элементами форматирования."""
+        try:
+            from pymax.static import Opcode
+            from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage
+            import time
+            
+            print(f"📤 Отправляем сообщение с форматированием в чат {chat_id}")
+            print(f"   Текст: {text}")
+            print(f"   Элементы: {elements}")
+            
+            # Создаем payload для сообщения с элементами
+            message_payload = SendMessagePayloadMessage(
+                text=text,
+                cid=int(time.time() * 1000),
+                elements=elements,
+                attaches=[],
+                link=None
+            )
+            
+            payload = SendMessagePayload(
+                chat_id=chat_id,
+                message=message_payload,
+                notify=notify
+            ).model_dump(by_alias=True)
+            
+            print(f"🔍 Payload для отправки: {payload}")
+            
+            data = await self.client._send_and_wait(
+                opcode=Opcode.MSG_SEND,
+                payload=payload
+            )
+            
+            print(f"🔍 Ответ от сервера: {data}")
+            
+            if error := data.get("payload", {}).get("error"):
+                print(f"❌ Ошибка отправки сообщения с форматированием: {error}")
+                return None
+                
+            print(f"✅ Сообщение с форматированием успешно отправлено")
+            return data
+            
+        except Exception as e:
+            print(f"❌ Ошибка при отправке сообщения с форматированием: {e}")
+            import traceback
+            print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+            return None
+    
+    async def _send_photo_with_elements(self, chat_id, text, elements, photo, notify=False, **kwargs):
+        """Отправляет фотографию с элементами форматирования."""
+        try:
+            from pymax.static import Opcode
+            from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage, AttachPhotoPayload
+            import time
+            
+            print(f"📤 Отправляем фотографию с форматированием в чат {chat_id}")
+            print(f"   Текст: {text}")
+            print(f"   Элементы: {elements}")
+            
+            # Загружаем фотографию
+            attach = await self.client._upload_photo(photo)
+            if not attach or not attach.photo_token:
+                print(f"❌ Не удалось загрузить фотографию")
+                return None
+            
+            # Создаем вложения для фотографии
+            attaches = [
+                AttachPhotoPayload(photo_token=attach.photo_token).model_dump(by_alias=True)
+            ]
+            
+            # Создаем payload для сообщения с элементами и фотографией
+            message_payload = SendMessagePayloadMessage(
+                text=text,
+                cid=int(time.time() * 1000),
+                elements=elements,
+                attaches=attaches,
+                link=None
+            )
+            
+            payload = SendMessagePayload(
+                chat_id=chat_id,
+                message=message_payload,
+                notify=notify
+            ).model_dump(by_alias=True)
+            
+            print(f"🔍 Payload для отправки фото: {payload}")
+            
+            data = await self.client._send_and_wait(
+                opcode=Opcode.MSG_SEND,
+                payload=payload
+            )
+            
+            print(f"🔍 Ответ от сервера: {data}")
+            
+            if error := data.get("payload", {}).get("error"):
+                print(f"❌ Ошибка отправки фотографии с форматированием: {error}")
+                return None
+                
+            print(f"✅ Фотография с форматированием успешно отправлена")
+            return data
+            
+        except Exception as e:
+            print(f"❌ Ошибка при отправке фотографии с форматированием: {e}")
+            import traceback
+            print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+            return None
+    
+    async def send_file(self, chat_id, file_path, text="", markdown=False, **kwargs):
         """Отправляет файл в чат."""
         try:
             from pathlib import Path
@@ -264,8 +387,24 @@ class API:
             import asyncio
             await asyncio.sleep(2)  # Ждем 2 секунды
             
-            # Отправляем сообщение с файлом
-            return await self._send_message_with_file(chat_id, text, file_token, file_path.name, **kwargs)
+            # Если включен markdown, парсим текст
+            if markdown:
+                from pymax.markdown_parser import markdown_parser
+                clean_text, elements = markdown_parser.parse_to_max_format(text)
+                print(f"📝 Markdown парсинг для файла: '{text}' -> '{clean_text}' с {len(elements)} элементами")
+                
+                # Отправляем сообщение с файлом и элементами форматирования
+                return await self._send_file_with_elements(
+                    chat_id=chat_id,
+                    text=clean_text,
+                    elements=elements,
+                    file_token=file_token,
+                    filename=file_path.name,
+                    **kwargs
+                )
+            else:
+                # Отправляем сообщение с файлом
+                return await self._send_message_with_file(chat_id, text, file_token, file_path.name, **kwargs)
             
         except Exception as e:
             print(f"❌ Ошибка отправки файла: {e}")
@@ -273,7 +412,74 @@ class API:
             print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
             return None
     
-    async def send_photo(self, chat_id, file_path, text="", **kwargs):
+    async def _send_file_with_elements(self, chat_id, text, elements, file_token, filename, **kwargs):
+        """Отправляет файл с элементами форматирования."""
+        try:
+            from pymax.static import Opcode
+            from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage
+            import time
+            
+            print(f"📤 Отправляем файл с форматированием в чат {chat_id}")
+            print(f"   Текст: {text}")
+            print(f"   Элементы: {elements}")
+            print(f"   Файл: {filename}")
+            
+            # Создаем вложения для файла
+            if file_token.isdigit():
+                # Это fileId, используем его как fileId
+                attach_data = {
+                    "_type": "FILE",
+                    "name": filename,
+                    "fileId": int(file_token)
+                }
+                print(f"🔍 DEBUG: Используем fileId: {file_token}")
+            else:
+                # Это токен
+                attach_data = {
+                    "_type": "FILE",
+                    "name": filename,
+                    "token": file_token
+                }
+                print(f"🔍 DEBUG: Используем токен: {file_token}")
+            
+            # Создаем payload для сообщения с элементами и файлом
+            message_payload = SendMessagePayloadMessage(
+                text=text,
+                cid=int(time.time() * 1000),
+                elements=elements,
+                attaches=[attach_data],
+                link=None
+            )
+            
+            payload = SendMessagePayload(
+                chat_id=chat_id,
+                message=message_payload,
+                notify=kwargs.get('notify', True)
+            ).model_dump(by_alias=True)
+            
+            print(f"🔍 Payload для отправки файла: {payload}")
+            
+            data = await self.client._send_and_wait(
+                opcode=Opcode.MSG_SEND,
+                payload=payload
+            )
+            
+            print(f"🔍 Ответ от сервера: {data}")
+            
+            if error := data.get("payload", {}).get("error"):
+                print(f"❌ Ошибка отправки файла с форматированием: {error}")
+                return None
+                
+            print(f"✅ Файл с форматированием успешно отправлен")
+            return data
+            
+        except Exception as e:
+            print(f"❌ Ошибка при отправке файла с форматированием: {e}")
+            import traceback
+            print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+            return None
+    
+    async def send_photo(self, chat_id, file_path, text="", markdown=False, **kwargs):
         """Отправляет фотографию в чат."""
         try:
             import aiofiles
@@ -323,13 +529,28 @@ class API:
 
             print(f"✅ Фотография загружена на сервер")
 
-            # Отправляем сообщение с фотографией
-            result = await self.client.send_message(
-                chat_id=chat_id,
-                text=text,
-                photo=photo,
-                notify=kwargs.get('notify', True)
-            )
+            # Если включен markdown, парсим текст
+            if markdown:
+                from pymax.markdown_parser import markdown_parser
+                clean_text, elements = markdown_parser.parse_to_max_format(text)
+                print(f"📝 Markdown парсинг для фото: '{text}' -> '{clean_text}' с {len(elements)} элементами")
+                
+                # Отправляем сообщение с фотографией и элементами форматирования
+                result = await self._send_photo_with_elements(
+                    chat_id=chat_id,
+                    text=clean_text,
+                    elements=elements,
+                    photo=photo,
+                    notify=kwargs.get('notify', True)
+                )
+            else:
+                # Отправляем сообщение с фотографией
+                result = await self.client.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    photo=photo,
+                    notify=kwargs.get('notify', True)
+                )
             # Удаляем временный файл, если был скачан
             if temp_file:
                 try:
@@ -817,3 +1038,31 @@ class API:
             return user.names[0].name
         
         return f"Пользователь {sender_id}"
+
+    async def set_reaction(self, message, reaction_id, reaction_type="EMOJI"):
+        """Устанавливает реакцию на сообщение."""
+        # Используем chat_id из сообщения, если он есть
+        chat_id = getattr(message, 'chat_id', None)
+        if not chat_id:
+            chat_id = await self.await_chat_id(message)
+        if not chat_id:
+            await log_critical_error(Exception("await_chat_id timeout"), message, self.client)
+            return False
+        
+        try:
+            print(f"👍 Устанавливаем реакцию {reaction_id} на сообщение {message.id} в чате {chat_id}")
+            result = await self.client.set_reaction(
+                chat_id=chat_id,
+                message_id=str(message.id),
+                reaction_id=reaction_id,
+                reaction_type=reaction_type
+            )
+            if result:
+                print(f"✅ Реакция {reaction_id} успешно установлена")
+            else:
+                print(f"❌ Не удалось установить реакцию {reaction_id}")
+            return result
+        except Exception as e:
+            print(f"❌ Ошибка при установке реакции: {e}")
+            await log_critical_error(e, message, self.client, chat_id)
+            return False
