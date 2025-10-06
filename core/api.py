@@ -7,8 +7,8 @@ import aiofiles
 
 # --- КОНФИГУРАЦИЯ БОТА ---
 BOT_NAME = "Maxli"
-BOT_VERSION = "0.2.9" # Повышаем версию
-BOT_VERSION_CODE = 30
+BOT_VERSION = "0.3.0" # Повышаем версию
+BOT_VERSION_CODE = 31
 MODULES_DIR = Path("modules")
 LOG_BUFFER = []  # Глобальный буфер логов (последние строки)
 
@@ -240,6 +240,10 @@ class API:
         if not chat_id or chat_id == 0:
             print(f"❌ Некорректный chat_id в send: {chat_id}")
             return None
+        
+        # Специальная обработка для чата "Избранное"
+        if chat_id == self.me.id:
+            print(f"🔧 Отправка в чат 'Избранное' с ID: {chat_id}")
         
         # Если включен markdown, парсим текст
         if markdown:
