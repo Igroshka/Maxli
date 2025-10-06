@@ -169,6 +169,10 @@ class API:
 
         # 4. Fallback: используем last_known_chat_id если сообщение от нас
         if hasattr(self, 'me') and self.me and message.sender == self.me.id and self.last_known_chat_id:
+            # НЕ используем last_known_chat_id для сообщений из "Избранного"
+            if hasattr(message, 'chat_id') and message.chat_id == 0:
+                print(f"⚠️ Сообщение из 'Избранного' (chat_id=0), не используем last_known_chat_id")
+                return 0
             print(f"⚠️ Fallback: используем last_known_chat_id = {self.last_known_chat_id}")
             return self.last_known_chat_id
 
@@ -220,9 +224,9 @@ class API:
         """Безопасно редактирует сообщение."""
         # Используем chat_id из сообщения, если он есть
         chat_id = getattr(message, 'chat_id', None)
-        if not chat_id:
+        if chat_id is None:
             chat_id = await self.await_chat_id(message)
-        if not chat_id:
+        if chat_id is None:
             await log_critical_error(Exception("await_chat_id timeout"), message, self.client)
             return
         try:
