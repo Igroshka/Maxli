@@ -180,6 +180,17 @@ class API:
                     return dialog.id
 
         print(f"❌ Не удалось найти chat_id для сообщения {message_id_int} от {message.sender}")
+        
+        # 6. Специальная обработка для чата "Избранное" (Saved Messages)
+        # Если это сообщение от нас самих, возможно это чат "Избранное"
+        if hasattr(self, 'me') and self.me and message.sender == self.me.id:
+            # Ищем диалог с самим собой (часто это ID пользователя)
+            for dialog in self.client.dialogs:
+                if dialog.id == self.me.id:
+                    print(f"✅ Найден чат 'Избранное' с ID: {dialog.id}")
+                    self.message_to_chat_cache[message_id_int] = dialog.id
+                    return dialog.id
+        
         return None
 
     def clear_message_cache(self, max_size=1000):
@@ -225,6 +236,11 @@ class API:
     async def send(self, chat_id, text, markdown=False, **kwargs):
         notify = kwargs.pop("notify", False)
         
+        # Проверяем валидность chat_id
+        if not chat_id or chat_id == 0:
+            print(f"❌ Некорректный chat_id в send: {chat_id}")
+            return None
+        
         # Если включен markdown, парсим текст
         if markdown:
             from pymax.markdown_parser import markdown_parser
@@ -249,6 +265,11 @@ class API:
             from pymax.static import Opcode
             from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage
             import time
+            
+            # Проверяем валидность chat_id
+            if not chat_id or chat_id == 0:
+                print(f"❌ Некорректный chat_id: {chat_id}")
+                return None
             
             print(f"📤 Отправляем сообщение с форматированием в чат {chat_id}")
             print(f"   Текст: {text}")
@@ -297,6 +318,11 @@ class API:
             from pymax.static import Opcode
             from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage, AttachPhotoPayload
             import time
+            
+            # Проверяем валидность chat_id
+            if not chat_id or chat_id == 0:
+                print(f"❌ Некорректный chat_id в _send_photo_with_elements: {chat_id}")
+                return None
             
             print(f"📤 Отправляем фотографию с форматированием в чат {chat_id}")
             print(f"   Текст: {text}")
@@ -418,6 +444,11 @@ class API:
             from pymax.static import Opcode
             from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage
             import time
+            
+            # Проверяем валидность chat_id
+            if not chat_id or chat_id == 0:
+                print(f"❌ Некорректный chat_id в _send_file_with_elements: {chat_id}")
+                return None
             
             print(f"📤 Отправляем файл с форматированием в чат {chat_id}")
             print(f"   Текст: {text}")

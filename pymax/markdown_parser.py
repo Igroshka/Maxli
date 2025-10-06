@@ -38,61 +38,63 @@ class MarkdownParser:
         elements = []
         clean_text = text
         
-        # Сначала обрабатываем ссылки (они имеют приоритет)
-        link_pattern = self.patterns['LINK']
-        for match in link_pattern.finditer(text):
-            link_text = match.group(1)
-            link_url = match.group(2)
+        # Собираем все совпадения со всех паттернов в исходном тексте
+        all_matches = []
+        
+        # Сначала ссылки
+        for match in self.patterns['LINK'].finditer(text):
+            all_matches.append(('LINK', match))
+        
+        # Затем остальные элементы форматирования
+        for element_type, pattern in self.patterns.items():
+            if element_type != 'LINK':
+                for match in pattern.finditer(text):
+                    all_matches.append((element_type, match))
+        
+        # Сортируем по позиции начала (сначала обрабатываем те, что раньше в тексте)
+        all_matches.sort(key=lambda x: x[1].start())
+        
+        # Обрабатываем совпадения в порядке их появления в тексте
+        offset = 0
+        for element_type, match in all_matches:
+            # Вычисляем позицию в очищенном тексте
+            start_pos = match.start() - offset
+            content_length = len(match.group(1))
             
-            # Вычисляем позицию в исходном тексте
-            start_pos = match.start()
-            content_length = len(link_text)
-            
-            # Пропускаем ссылки с нулевой длиной
+            # Пропускаем элементы с нулевой длиной
             if content_length == 0:
                 continue
             
-            # Создаем элемент ссылки с атрибутами
-            element = MarkdownElement(
-                element_type='LINK',
-                from_pos=start_pos,
-                length=content_length,
-                attributes={'url': link_url}
-            )
-            elements.append(element)
-            
-            # Заменяем markdown ссылку на текст ссылки
-            clean_text = clean_text[:match.start()] + link_text + clean_text[match.end():]
-        
-        # Обрабатываем остальные элементы форматирования в порядке приоритета
-        # Сначала STRONG (**), потом EMPHASIZED (*), чтобы избежать конфликтов
-        priority_order = ['STRONG', 'UNDERLINE', 'STRIKETHROUGH', 'EMPHASIZED']
-        
-        for element_type in priority_order:
-            if element_type in self.patterns:
-                pattern = self.patterns[element_type]
-                # Находим все совпадения в очищенном тексте
-                matches = list(pattern.finditer(clean_text))
+            if element_type == 'LINK':
+                # Для ссылок используем текст ссылки как содержимое
+                link_text = match.group(1)
+                link_url = match.group(2)
                 
-                # Обрабатываем совпадения в обратном порядке, чтобы не сбивать позиции
-                for match in reversed(matches):
-                    content_length = len(match.group(1))
-                    start_pos = match.start()
-                    
-                    # Пропускаем элементы с нулевой длиной
-                    if content_length == 0:
-                        continue
-                    
-                    # Создаем элемент форматирования
-                    element = MarkdownElement(
-                        element_type=element_type,
-                        from_pos=start_pos,
-                        length=content_length
-                    )
-                    elements.append(element)
-                    
-                    # Удаляем markdown разметку из текста
-                    clean_text = clean_text[:match.start()] + match.group(1) + clean_text[match.end():]
+                # Создаем элемент ссылки с атрибутами
+                element = MarkdownElement(
+                    element_type=element_type,
+                    from_pos=start_pos,
+                    length=content_length,
+                    attributes={'url': link_url}
+                )
+                elements.append(element)
+                
+                # Заменяем markdown ссылку на текст ссылки
+                clean_text = clean_text[:match.start() - offset] + link_text + clean_text[match.end() - offset:]
+                offset += len(match.group(0)) - len(link_text)
+            else:
+                # Для остальных элементов форматирования
+                # Создаем элемент форматирования
+                element = MarkdownElement(
+                    element_type=element_type,
+                    from_pos=start_pos,
+                    length=content_length
+                )
+                elements.append(element)
+                
+                # Удаляем markdown разметку из текста
+                clean_text = clean_text[:match.start() - offset] + match.group(1) + clean_text[match.end() - offset:]
+                offset += len(match.group(0)) - len(match.group(1))
         
         # Сортируем элементы по позиции
         elements.sort(key=lambda x: x.from_pos)
