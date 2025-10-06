@@ -162,11 +162,18 @@ class WebSocketMixin(ClientProtocol):
                                         print(f"🔧 PyMax: добавлен chat_id {chat_id} к сообщению {msg.id}")
                                         self.logger.debug(f"Added chat_id {chat_id} to message {msg.id}")
                                     else:
-                                        # Fallback для чата "Избранное" - используем ID отправителя
+                                        # Fallback для чата "Избранное" - ищем диалог с самим собой
                                         if hasattr(self, 'me') and self.me and msg.sender == self.me.id:
-                                            # Для сообщений от нас самих используем наш ID как chat_id
-                                            msg.chat_id = self.me.id
-                                            print(f"🔧 PyMax: установлен chat_id для 'Избранного': {self.me.id} к сообщению {msg.id}")
+                                            # Ищем диалог с самим собой (часто это ID пользователя)
+                                            for dialog in getattr(self, 'dialogs', []):
+                                                if dialog.id == self.me.id:
+                                                    msg.chat_id = dialog.id
+                                                    print(f"🔧 PyMax: установлен chat_id для 'Избранного': {dialog.id} к сообщению {msg.id}")
+                                                    break
+                                            else:
+                                                # Если диалог не найден, используем ID отправителя как fallback
+                                                msg.chat_id = self.me.id
+                                                print(f"🔧 PyMax: установлен chat_id для 'Избранного' (fallback): {self.me.id} к сообщению {msg.id}")
                                         else:
                                             print(f"⚠️ PyMax: chat_id не найден в payload для сообщения {msg.id}")
                                             print(f"   Payload keys: {list(payload.keys())}")

@@ -184,12 +184,12 @@ class API:
         # 6. Специальная обработка для чата "Избранное" (Saved Messages)
         # Если это сообщение от нас самих, возможно это чат "Избранное"
         if hasattr(self, 'me') and self.me and message.sender == self.me.id:
-            # Ищем диалог с самим собой (часто это ID пользователя)
-            for dialog in self.client.dialogs:
-                if dialog.id == self.me.id:
-                    print(f"✅ Найден чат 'Избранное' с ID: {dialog.id}")
-                    self.message_to_chat_cache[message_id_int] = dialog.id
-                    return dialog.id
+            # Для чата "Избранное" используем специальный ID
+            # В Max чат "Избранное" часто имеет ID равный ID пользователя
+            saved_messages_id = self.me.id
+            print(f"✅ Используем ID для 'Избранного': {saved_messages_id}")
+            self.message_to_chat_cache[message_id_int] = saved_messages_id
+            return saved_messages_id
         
         return None
 
