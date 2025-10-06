@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/Igroshka/Maxli/blob/main/logo.png?raw=true" alt="Maxli Logo" width="150" style="border-radius:50%;" />
+  <img src="https://github.com/Igroshka/Maxli/blob/main/logo.png?raw=true" alt="Maxli Logo" width="150" style="border-radius:50% !important;" />
 </p>
 
 <h1 align="center">Maxli — UserBot for Messenger "Max"</h1>
@@ -9,6 +9,8 @@
   <br>
   Сделан <a href="https://t.me/YouRooni">YouRooni</a>
 </p>
+
+<img src="https://raw.githubusercontent.com/Igroshka/Maxli/refs/heads/main/banner1.png" alt="Maxli Banner 1" width="150" style="border-radius:5% !important;" />
 
 ---
 
