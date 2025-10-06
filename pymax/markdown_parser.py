@@ -64,11 +64,18 @@ class MarkdownParser:
             # Заменяем markdown ссылку на текст ссылки
             clean_text = clean_text[:match.start()] + link_text + clean_text[match.end():]
         
-        # Теперь обрабатываем остальные элементы форматирования в очищенном тексте
-        for element_type, pattern in self.patterns.items():
-            if element_type != 'LINK':
+        # Обрабатываем остальные элементы форматирования в порядке приоритета
+        # Сначала STRONG (**), потом EMPHASIZED (*), чтобы избежать конфликтов
+        priority_order = ['STRONG', 'UNDERLINE', 'STRIKETHROUGH', 'EMPHASIZED']
+        
+        for element_type in priority_order:
+            if element_type in self.patterns:
+                pattern = self.patterns[element_type]
                 # Находим все совпадения в очищенном тексте
-                for match in pattern.finditer(clean_text):
+                matches = list(pattern.finditer(clean_text))
+                
+                # Обрабатываем совпадения в обратном порядке, чтобы не сбивать позиции
+                for match in reversed(matches):
                     content_length = len(match.group(1))
                     start_pos = match.start()
                     
