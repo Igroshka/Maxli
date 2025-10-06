@@ -157,7 +157,7 @@ class WebSocketMixin(ClientProtocol):
                                     
                                     # Добавляем chat_id из payload в сообщение
                                     chat_id = payload.get("chatId")
-                                    if chat_id:
+                                    if chat_id is not None:
                                         msg.chat_id = chat_id
                                         print(f"🔧 PyMax: добавлен chat_id {chat_id} к сообщению {msg.id}")
                                         self.logger.debug(f"Added chat_id {chat_id} to message {msg.id}")
