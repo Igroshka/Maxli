@@ -1,6 +1,7 @@
 # name: Генератор изображений
 # version: 1.0.0
 # developer: @YouRooni - Maxli Dev
+# id: genimg_module
 # min-maxli: 26
 
 import aiohttp

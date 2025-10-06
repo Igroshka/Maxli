@@ -38,36 +38,44 @@ async def message_handler(message: Message):
     # Обновляем last_known_chat_id для ответов на "Прр"
     api.update_last_known_chat_id(message)
 
-    # --- ЕСЛИ МЫ ЗДЕСЬ, ЗНАЧИТ СООБЩЕНИЕ ОТ НАС И ЭТО КОМАНДА ---
-    current_prefix = config.get('prefix', '.')
-    if not message.text or (current_prefix and not message.text.startswith(current_prefix)):
-        return
-
-    # Проверяем, что команда от самого бота (но не мешаем обработке автоответчиков и т.п.)
+    # Проверяем, что команда от самого бота
     is_own = False
     if hasattr(client, 'me') and client.me and hasattr(message, 'sender'):
         is_own = (message.sender == client.me.id)
 
-    command_body = message.text[len(current_prefix):]; parts = command_body.split()
-    command_name = parts[0].lower(); args = parts[1:]
-    resolved_command = ALIASES.get(command_name, command_name)
-    handler_info = COMMANDS.get(resolved_command) or MODULE_COMMANDS.get(resolved_command)
+    # Обрабатываем команды только если сообщение от нас и начинается с префикса
+    current_prefix = config.get('prefix', '.')
+    if is_own and message.text and current_prefix and message.text.startswith(current_prefix):
+        command_body = message.text[len(current_prefix):]; parts = command_body.split()
+        command_name = parts[0].lower(); args = parts[1:]
+        resolved_command = ALIASES.get(command_name, command_name)
+        handler_info = COMMANDS.get(resolved_command) or MODULE_COMMANDS.get(resolved_command)
 
-    if handler_info and is_own:
-        handler = handler_info if callable(handler_info) else handler_info['function']
-        # Логируем команду и полный текст перед выполнением
-        _append_log(f"[command] {command_name} | {full_text}")
-        try:
-            await handler(api, message, args)
-        except Exception as e:
-            # Логируем ошибку в LOG_BUFFER
-            err_text = f"❌ Ошибка выполнения команды {command_name}: {e} | Сообщение: {full_text}"
-            _append_log(err_text)
-            await log_critical_error(e, message, client)
+        if handler_info:
+            handler = handler_info if callable(handler_info) else handler_info['function']
+            # Логируем команду и полный текст перед выполнением
+            _append_log(f"[command] {command_name} | {full_text}")
             try:
-                await api.edit(message, err_text)
-            except Exception:
-                pass
+                await handler(api, message, args)
+            except Exception as e:
+                # Логируем ошибку в LOG_BUFFER
+                err_text = f"❌ Ошибка выполнения команды {command_name}: {e} | Сообщение: {full_text}"
+                _append_log(err_text)
+                await log_critical_error(e, message, client)
+                try:
+                    await api.edit(message, err_text)
+                except Exception:
+                    pass
+            return  # Выходим после обработки команды
+
+    # Обрабатываем все сообщения через вотчеры модулей
+    from core.loader import WATCHERS
+    for watcher in WATCHERS:
+        try:
+            await watcher(api, message)
+        except Exception as e:
+            _append_log(f"❌ Ошибка в вотчере: {e}")
+            print(f"❌ Ошибка в вотчере: {e}")
 
 
 @client.on_start

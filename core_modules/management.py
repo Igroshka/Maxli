@@ -29,12 +29,22 @@ async def unload_command(api, message, args):
     if not module:
         await api.edit(message, f"❌ {error}")
         return
-    # Если модуль не загружен, но найден файл — сообщаем
-    if not module.get('loaded'):
-        await api.edit(message, f"❌ Модуль '{module['display_name']}' не загружен.")
-        return
-    response = await unload_module(module['name'])
-    await api.edit(message, f"Вывод:\n{response}")
+    
+    # Если модуль загружен — выгружаем его
+    if module.get('loaded'):
+        response = await unload_module(module['name'])
+        await api.edit(message, f"Вывод:\n{response}")
+    else:
+        # Если модуль не загружен, но найден файл — удаляем файл
+        try:
+            file_path = module['file_path']
+            if file_path.exists():
+                file_path.unlink()
+                await api.edit(message, f"✅ Файл модуля '{module['display_name']}' удален с диска.")
+            else:
+                await api.edit(message, f"❌ Файл модуля '{module['display_name']}' не найден на диске.")
+        except Exception as e:
+            await api.edit(message, f"❌ Ошибка удаления файла модуля: {e}")
 
 async def modules_command(api, message, args):
     if not LOADED_MODULES: await api.edit(message, "📦 Нет загруженных модулей."); return
@@ -387,24 +397,98 @@ async def register(commands):
 
         # Иначе — ожидаем zip во вложении
         attach = getattr(message, 'attaches', None)
-        # Если нет attach, пробуем взять файл из reply_to.attaches
-        if not attach and hasattr(message, 'reply_to') and getattr(message.reply_to, 'attaches', None):
-            attach = getattr(message.reply_to, 'attaches', None)
+        
+        # Если нет attach, пробуем найти файл в ответе на сообщение (как в modules.py)
+        if not attach:
+            print("🔍 DEBUG: В текущем сообщении нет вложений, проверяем reply_to_message...")
+            if hasattr(message, 'reply_to_message') and message.reply_to_message:
+                reply_msg = message.reply_to_message
+                print(f"🔍 DEBUG: Обнаружен ответ на сообщение, проверяем вложения...")
+                
+                if isinstance(reply_msg, dict):
+                    # reply_to_message это словарь
+                    reply_attaches = reply_msg.get('attaches', [])
+                    if reply_attaches:
+                        print("🔍 DEBUG: В исходном сообщении есть вложения (dict), используем их...")
+                        attach = reply_attaches
+                    else:
+                        print("🔍 DEBUG: В исходном сообщении (dict) нет вложений")
+                else:
+                    # reply_to_message это объект
+                    if hasattr(reply_msg, 'attaches') and reply_msg.attaches:
+                        print("🔍 DEBUG: В исходном сообщении есть вложения (object), используем их...")
+                        attach = reply_msg.attaches
+                    else:
+                        print("🔍 DEBUG: В исходном сообщении (object) нет вложений")
+            else:
+                print("🔍 DEBUG: Нет reply_to_message")
+        
         if not attach:
             await api.edit(message, "⚠️ Прикрепите zip-файл с бэкапом к сообщению или ответьте на сообщение с файлом и вызовите loadbackup.")
             return
 
         try:
             attach0 = attach[0]
-            url = getattr(attach0, 'url', None)
-            name = getattr(attach0, 'name', 'backup.zip')
-            if not url or not name.lower().endswith('.zip'):
-                await api.edit(message, "❌ Ошибка: прикреплён не zip-файл или нет URL.")
+            print(f"🔍 DEBUG: attach0 = {attach0}")
+            print(f"🔍 DEBUG: type(attach0) = {type(attach0)}")
+            
+            # Обрабатываем как словарь и как объект
+            if isinstance(attach0, dict):
+                name = attach0.get('name', 'backup.zip')
+                file_id = attach0.get('fileId')
+                token = attach0.get('token')
+                url = attach0.get('url')  # Может быть None
+                print(f"🔍 DEBUG: dict - name={name}, fileId={file_id}, token={token}, url={url}")
+                
+                # Если нет прямого URL, генерируем его из fileId и token
+                if not url and file_id and token:
+                    url = f"https://files.oneme.ru/{file_id}/{token}"
+                    print(f"🔍 DEBUG: Сгенерирован URL: {url}")
+            else:
+                url = getattr(attach0, 'url', None)
+                name = getattr(attach0, 'name', 'backup.zip')
+                file_id = getattr(attach0, 'fileId', None)
+                token = getattr(attach0, 'token', None)
+                print(f"🔍 DEBUG: object - url={url}, name={name}, fileId={file_id}, token={token}")
+                
+                # Если нет прямого URL, генерируем его из fileId и token
+                if not url and file_id and token:
+                    url = f"https://files.oneme.ru/{file_id}/{token}"
+                    print(f"🔍 DEBUG: Сгенерирован URL: {url}")
+            
+            if not url:
+                await api.edit(message, "❌ Ошибка: не удалось получить URL файла (нет fileId/token или url).")
                 return
+                
+            if not name.lower().endswith('.zip'):
+                await api.edit(message, f"❌ Ошибка: файл '{name}' не является zip-архивом.")
+                return
+                
+            print(f"🔍 DEBUG: Файл принят - {name} ({url})")
 
             await api.edit(message, "⏳ Скачиваю бэкап для проверки...")
 
             tmpf = Path(tempfile.mktemp(suffix='.zip'))
+
+            # Используем API для получения URL файла
+            try:
+                if isinstance(attach0, dict):
+                    file_id = attach0.get('fileId')
+                    token = attach0.get('token')
+                else:
+                    file_id = getattr(attach0, 'fileId', None)
+                    token = getattr(attach0, 'token', None)
+                
+                if file_id and token:
+                    # Получаем URL через API
+                    file_url = await api.get_file_url(file_id, token, message.id, chat_id)
+                    if not file_url:
+                        await api.edit(message, "❌ Не удалось получить URL файла через API.")
+                        return
+                    print(f"🔍 DEBUG: Получен URL через API: {file_url}")
+                    url = file_url
+            except Exception as e:
+                print(f"⚠️ Ошибка получения URL через API: {e}, используем прямой URL")
 
             async with aiohttp.ClientSession() as session:
                 async with session.get(url) as resp:

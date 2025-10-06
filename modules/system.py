@@ -1,6 +1,7 @@
 # name: SystemInfo
 # version: 1.0.0
 # developer: @gemeguardian (ported for Maxli)
+# id: system_info
 # dependencies: psutil
 # min-maxli: 26
 

@@ -10,6 +10,7 @@ COMMANDS = {}
 MODULE_COMMANDS = {}
 LOADED_MODULES = {}
 WATCHERS = [] # Новый список для вотчеров
+MODULE_IDS = {} # Словарь для отслеживания ID модулей: {module_id: module_name}
  
 class ModuleAPIWrapper:
     def __init__(self, module_name, api):
@@ -83,17 +84,58 @@ def version_to_tuple(v: str):
     try: return tuple(map(int, v.split('.')))
     except: return (0,0,0)
 
+def validate_module_id(module_id: str) -> tuple[bool, str]:
+    """
+    Валидирует ID модуля согласно требованиям:
+    - 2-32 символа
+    - Начинается с буквы
+    - Содержит только латинские буквы, цифры, дефисы и подчеркивания
+    
+    Returns:
+        (is_valid, error_message)
+    """
+    if not module_id:
+        return False, "ID модуля не может быть пустым"
+    
+    if len(module_id) < 2 or len(module_id) > 32:
+        return False, "ID модуля должен быть от 2 до 32 символов"
+    
+    if not module_id[0].isalpha():
+        return False, "ID модуля должен начинаться с буквы"
+    
+    if not re.match(r'^[a-zA-Z0-9_-]+$', module_id):
+        return False, "ID модуля может содержать только латинские буквы, цифры, дефисы и подчеркивания"
+    
+    return True, ""
+
+def check_duplicate_module_id(module_id: str, module_name: str) -> tuple[bool, str]:
+    """
+    Проверяет, не используется ли уже этот ID модуля.
+    
+    Returns:
+        (is_duplicate, error_message)
+    """
+    if module_id in MODULE_IDS and MODULE_IDS[module_id] != module_name:
+        return True, f"ID '{module_id}' уже используется модулем '{MODULE_IDS[module_id]}'"
+    
+    return False, ""
+
 def parse_module_header(path: Path):
-    header = {"name": path.stem, "version": "1.0.0", "dependencies": [], "min-maxli": "0"}
+    header = {"name": path.stem, "version": "1.0.0", "dependencies": [], "min-maxli": "0", "id": None}
     with open(path, 'r', encoding='utf-8') as f:
         for line in f.readlines()[:10]:
             if line.startswith('#'):
-                for key in ["name", "version", "developer", "dependencies", "min-maxli"]:
+                for key in ["name", "version", "developer", "dependencies", "min-maxli", "id"]:
                     match = re.search(rf"^\s*#\s*{key}\s*:\s*(.+)", line)
                     if match:
                         value = match.group(1).strip()
                         if key == "dependencies": header[key] = [d.strip() for d in value.split(',') if d.strip()]
                         else: header[key] = value
+    
+    # Если ID не указан, используем имя файла как ID
+    if not header["id"]:
+        header["id"] = path.stem
+    
     return header
 
 async def load_module(module_path: Path, api):
@@ -110,6 +152,40 @@ async def load_module(module_path: Path, api):
     original_watchers = []
     
     header = parse_module_header(module_path)
+    
+    # Валидация ID модуля
+    module_id = header["id"]
+    is_valid, error_msg = validate_module_id(module_id)
+    if not is_valid:
+        return f"❌ Ошибка валидации ID модуля: {error_msg}"
+    
+    # Проверка на дублирование ID (только если это не перезагрузка того же модуля)
+    if module_name not in LOADED_MODULES:
+        is_duplicate, duplicate_msg = check_duplicate_module_id(module_id, module_name)
+        if is_duplicate:
+            return f"❌ Ошибка дублирования ID: {duplicate_msg}"
+    
+    # Переименование файла модуля по ID, если ID отличается от имени файла
+    if module_id != module_name:
+        new_module_path = module_path.parent / f"{module_id}.py"
+        
+        # Если файл с ID уже существует и это не тот же файл, удаляем старый
+        if new_module_path.exists() and new_module_path != module_path:
+            try:
+                new_module_path.unlink()
+                print(f"🗑️ Удален старый файл модуля: {new_module_path.name}")
+            except Exception as e:
+                print(f"⚠️ Не удалось удалить старый файл: {e}")
+        
+        try:
+            # Переименовываем файл
+            module_path.rename(new_module_path)
+            module_path = new_module_path
+            module_name = module_id
+            print(f"📝 Модуль переименован: {module_path.stem}.py → {module_id}.py")
+        except Exception as e:
+            return f"❌ Ошибка переименования модуля: {e}"
+    
     required_version = int(header["min-maxli"])
     current_version = BOT_VERSION_CODE
     if current_version < required_version: return f"❌ Ошибка: модуль '{header['name']}' требует Maxli v{header['min-maxli']}. Ваша версия: v{BOT_VERSION_CODE}."
@@ -139,8 +215,12 @@ async def load_module(module_path: Path, api):
             
             try:
                 await module.register(ModuleAPIWrapper(module_name, api))
+                
+                # Регистрируем ID модуля
+                MODULE_IDS[module_id] = module_name
+                
                 version = header.get('version', '1.0.0')
-                return f"✅ Модуль '{header.get('name', module_name)}' v{version} успешно загружен."
+                return f"✅ Модуль '{header.get('name', module_name)}' (ID: {module_id}) v{version} успешно загружен."
             except Exception as register_error:
                 # Откат при ошибке регистрации
                 print(f"❌ Ошибка при регистрации модуля '{module_name}': {register_error}")
@@ -206,6 +286,11 @@ async def rollback_module(module_name, was_loaded, original_commands, original_w
 
 async def unload_module(module_name: str, remove_file: bool = True):
     if module_name not in LOADED_MODULES: return f"Модуль '{module_name}' не загружен."
+    
+    # Получаем ID модуля для удаления из словаря
+    module_header = LOADED_MODULES[module_name].get('header', {})
+    module_id = module_header.get('id', module_name)
+    
     # Выгружаем команды
     commands_to_remove = list(LOADED_MODULES[module_name].get('commands', {}).keys())
     for cmd in commands_to_remove:
@@ -214,12 +299,16 @@ async def unload_module(module_name: str, remove_file: bool = True):
     watchers_to_remove = LOADED_MODULES[module_name].get('watchers', [])
     for watcher in watchers_to_remove:
         if watcher in WATCHERS: WATCHERS.remove(watcher)
+    
+    # Удаляем ID из словаря
+    if module_id in MODULE_IDS:
+        del MODULE_IDS[module_id]
         
     del LOADED_MODULES[module_name]
     if module_name in sys.modules: del sys.modules[module_name]
     if remove_file:
         (MODULES_DIR / f"{module_name}.py").unlink(missing_ok=True)
-    return f"✅ Модуль '{module_name}' успешно выгружен и удален."
+    return f"✅ Модуль '{module_name}' (ID: {module_id}) успешно выгружен и удален."
 
 async def register_system_module(module):
     if hasattr(module, "register"):
@@ -233,8 +322,19 @@ async def load_all_modules(api):
     await register_system_module(modules); await register_system_module(restart)
     MODULES_DIR.mkdir(exist_ok=True)
     print("--- Автозагрузка пользовательских модулей ---")
+    loaded_files = set()  # Отслеживаем загруженные файлы
     for file in MODULES_DIR.glob("*.py"):
         if file.stem != "__init__":
-            result = await load_module(file, api)
-            print(f"  - {file.name}: {result}")
+            # Проверяем, не был ли этот файл уже загружен (переименован)
+            if file.name not in loaded_files:
+                result = await load_module(file, api)
+                print(f"  - {file.name}: {result}")
+                # Если файл был переименован, добавляем новое имя в список
+                if "переименован" in result or "успешно загружен" in result:
+                    # Получаем новое имя файла из результата или из MODULE_IDS
+                    for module_id, module_name in MODULE_IDS.items():
+                        if module_name == file.stem:
+                            loaded_files.add(f"{module_id}.py")
+                            break
+                loaded_files.add(file.name)
     print("---------------------------------------")
