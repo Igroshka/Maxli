@@ -5,10 +5,11 @@ from typing import List, Dict, Any
 class MarkdownElement:
     """Класс для представления элемента форматирования."""
     
-    def __init__(self, element_type: str, from_pos: int, length: int):
+    def __init__(self, element_type: str, from_pos: int, length: int, attributes: Dict[str, Any] = None):
         self.type = element_type
         self.from_pos = from_pos
         self.length = length
+        self.attributes = attributes or {}
 
 
 class MarkdownParser:
@@ -21,6 +22,7 @@ class MarkdownParser:
             'EMPHASIZED': re.compile(r'\*(.*?)\*'),  # *курсив*
             'UNDERLINE': re.compile(r'__(.*?)__'),   # __подчеркнутый__
             'STRIKETHROUGH': re.compile(r'~~(.*?)~~'), # ~~зачеркнутый~~
+            'LINK': re.compile(r'\[([^\]]+)\]\(([^)]+)\)'), # [текст](url)
         }
     
     def parse(self, text: str) -> tuple[str, List[MarkdownElement]]:
@@ -35,29 +37,47 @@ class MarkdownParser:
         """
         elements = []
         clean_text = text
-        offset = 0
         
-        # Обрабатываем каждый тип форматирования
-        for element_type, pattern in self.patterns.items():
-            matches = list(pattern.finditer(text))
+        # Сначала обрабатываем ссылки (они имеют приоритет)
+        link_pattern = self.patterns['LINK']
+        for match in link_pattern.finditer(text):
+            link_text = match.group(1)
+            link_url = match.group(2)
             
-            for match in matches:
-                # Вычисляем позиции в очищенном тексте
-                start_pos = match.start() - offset
-                end_pos = match.end() - offset
-                content_length = len(match.group(1))
-                
-                # Создаем элемент форматирования
-                element = MarkdownElement(
-                    element_type=element_type,
-                    from_pos=start_pos,
-                    length=content_length
-                )
-                elements.append(element)
-                
-                # Удаляем markdown разметку из текста
-                clean_text = clean_text[:match.start() - offset] + match.group(1) + clean_text[match.end() - offset:]
-                offset += len(match.group(0)) - len(match.group(1))
+            # Вычисляем позицию в исходном тексте
+            start_pos = match.start()
+            content_length = len(link_text)
+            
+            # Создаем элемент ссылки с атрибутами
+            element = MarkdownElement(
+                element_type='LINK',
+                from_pos=start_pos,
+                length=content_length,
+                attributes={'url': link_url}
+            )
+            elements.append(element)
+            
+            # Заменяем markdown ссылку на текст ссылки
+            clean_text = clean_text[:match.start()] + link_text + clean_text[match.end():]
+        
+        # Теперь обрабатываем остальные элементы форматирования в очищенном тексте
+        for element_type, pattern in self.patterns.items():
+            if element_type != 'LINK':
+                # Находим все совпадения в очищенном тексте
+                for match in pattern.finditer(clean_text):
+                    content_length = len(match.group(1))
+                    start_pos = match.start()
+                    
+                    # Создаем элемент форматирования
+                    element = MarkdownElement(
+                        element_type=element_type,
+                        from_pos=start_pos,
+                        length=content_length
+                    )
+                    elements.append(element)
+                    
+                    # Удаляем markdown разметку из текста
+                    clean_text = clean_text[:match.start()] + match.group(1) + clean_text[match.end():]
         
         # Сортируем элементы по позиции
         elements.sort(key=lambda x: x.from_pos)
@@ -84,6 +104,11 @@ class MarkdownParser:
                 "from": element.from_pos,
                 "length": element.length
             }
+            
+            # Добавляем атрибуты, если они есть (например, для ссылок)
+            if element.attributes:
+                max_element["attributes"] = element.attributes
+            
             max_elements.append(max_element)
         
         return clean_text, max_elements
