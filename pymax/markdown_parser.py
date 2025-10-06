@@ -48,6 +48,10 @@ class MarkdownParser:
             start_pos = match.start()
             content_length = len(link_text)
             
+            # Пропускаем ссылки с нулевой длиной
+            if content_length == 0:
+                continue
+            
             # Создаем элемент ссылки с атрибутами
             element = MarkdownElement(
                 element_type='LINK',
@@ -67,6 +71,10 @@ class MarkdownParser:
                 for match in pattern.finditer(clean_text):
                     content_length = len(match.group(1))
                     start_pos = match.start()
+                    
+                    # Пропускаем элементы с нулевой длиной
+                    if content_length == 0:
+                        continue
                     
                     # Создаем элемент форматирования
                     element = MarkdownElement(
