@@ -22,7 +22,7 @@ api = API(client, config)
 async def message_handler(message: Message):
     # chat_id уже добавлен в сообщение модифицированной библиотекой PyMax
     from core.api import _append_log
-    if not hasattr(message, 'chat_id') or not message.chat_id:
+    if not hasattr(message, 'chat_id') or message.chat_id is None:
         _append_log(f"⚠️ Сообщение {message.id} не имеет chat_id, пропускаем")
         return
 

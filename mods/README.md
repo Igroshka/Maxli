@@ -695,3 +695,127 @@ msg = render_text("module_loaded", name="MyModule", version="1.1.0", maxli_versi
 - Валидность формата ID
 
 При обнаружении дублирования или ошибок загрузка модуля прерывается с соответствующим сообщением об ошибке.
+
+---
+
+## 🎯 Новые возможности: Реакции и Markdown форматирование
+
+### Установка реакций
+
+Теперь вы можете устанавливать реакции на сообщения:
+
+```python
+async def reaction_command(api, message, args):
+    """Устанавливает реакцию на сообщение."""
+    if not args:
+        await api.edit(message, "Укажите реакцию: .reaction ❤️")
+        return
+    
+    reaction_id = args[0]
+    
+    # Устанавливаем реакцию на текущее сообщение
+    result = await api.set_reaction(message, reaction_id)
+    
+    if result:
+        await api.edit(message, f"✅ Реакция {reaction_id} установлена!")
+    else:
+        await api.edit(message, f"❌ Не удалось установить реакцию {reaction_id}")
+
+async def register(api):
+    api.register_command("reaction", reaction_command)
+```
+
+### Markdown форматирование
+
+Поддерживается отправка сообщений с markdown форматированием:
+
+#### Поддерживаемые элементы:
+- `**текст**` - жирный текст (STRONG)
+- `*текст*` - курсивный текст (EMPHASIZED)  
+- `__текст__` - подчеркнутый текст (UNDERLINE)
+- `~~текст~~` - зачеркнутый текст (STRIKETHROUGH)
+- `[текст](url)` - ссылки (LINK)
+
+#### Примеры использования:
+
+```python
+async def markdown_command(api, message, args):
+    """Отправляет сообщение с markdown форматированием."""
+    chat_id = await api.await_chat_id(message)
+    
+    # Отправка с markdown форматированием
+    await api.send(chat_id, 
+        "**Жирный текст** и *курсивный* текст!\n"
+        "__Подчеркнутый__ и ~~зачеркнутый~~ текст!\n"
+        "Ссылка: [RooniCraft](https://roonicraft.online)",
+        markdown=True
+    )
+    
+    await api.delete(message)
+
+async def markdown_photo_command(api, message, args):
+    """Отправляет фотографию с markdown форматированием."""
+    if not args:
+        await api.edit(message, "Укажите путь к фото: .markdown_photo photo.jpg")
+        return
+    
+    file_path = args[0]
+    chat_id = await api.await_chat_id(message)
+    
+    # Отправка фотографии с markdown
+    await api.send_photo(chat_id,
+        file_path,
+        "**Фотография** с *markdown* форматированием!\n"
+        "Ссылка: [Подробнее](https://example.com)",
+        markdown=True
+    )
+    
+    await api.delete(message)
+
+async def markdown_file_command(api, message, args):
+    """Отправляет файл с markdown форматированием."""
+    if not args:
+        await api.edit(message, "Укажите путь к файлу: .markdown_file document.pdf")
+        return
+    
+    file_path = args[0]
+    chat_id = await api.await_chat_id(message)
+    
+    # Отправка файла с markdown
+    await api.send_file(chat_id,
+        file_path,
+        "**Файл** с *markdown* форматированием!\n"
+        "Ссылка: [Скачать](https://example.com)",
+        markdown=True
+    )
+    
+    await api.delete(message)
+
+async def register(api):
+    api.register_command("markdown", markdown_command)
+    api.register_command("markdown_photo", markdown_photo_command)
+    api.register_command("markdown_file", markdown_file_command)
+```
+
+### Технические детали
+
+#### Формат элементов форматирования:
+```json
+{
+  "text": "Жирный текст и ссылка!",
+  "elements": [
+    {"type": "STRONG", "from": 0, "length": 12},
+    {"type": "LINK", "from": 16, "length": 6, "attributes": {"url": "https://example.com"}}
+  ]
+}
+```
+
+#### API методы:
+- `api.set_reaction(message, reaction_id, reaction_type="EMOJI")` - установка реакции
+- `api.send(chat_id, text, markdown=False, **kwargs)` - отправка с markdown
+- `api.send_photo(chat_id, file_path, text="", markdown=False, **kwargs)` - фото с markdown
+- `api.send_file(chat_id, file_path, text="", markdown=False, **kwargs)` - файл с markdown
+
+#### Opcode для реакций:
+- **178** (MSG_REACTION) - установка реакции
+- **64** (MSG_SEND) - отправка сообщений с элементами форматирования

@@ -157,13 +157,27 @@ class WebSocketMixin(ClientProtocol):
                                     
                                     # Добавляем chat_id из payload в сообщение
                                     chat_id = payload.get("chatId")
-                                    if chat_id:
+                                    if chat_id is not None:
                                         msg.chat_id = chat_id
                                         print(f"🔧 PyMax: добавлен chat_id {chat_id} к сообщению {msg.id}")
                                         self.logger.debug(f"Added chat_id {chat_id} to message {msg.id}")
                                     else:
-                                        print(f"⚠️ PyMax: chat_id не найден в payload для сообщения {msg.id}")
-                                        print(f"   Payload keys: {list(payload.keys())}")
+                                        # Fallback для чата "Избранное" - ищем диалог с самим собой
+                                        if hasattr(self, 'me') and self.me and msg.sender == self.me.id:
+                                            # Ищем диалог с самим собой (часто это ID пользователя)
+                                            for dialog in getattr(self, 'dialogs', []):
+                                                if dialog.id == self.me.id:
+                                                    msg.chat_id = dialog.id
+                                                    print(f"🔧 PyMax: установлен chat_id для 'Избранного': {dialog.id} к сообщению {msg.id}")
+                                                    break
+                                            else:
+                                                # Если диалог не найден, используем специальный ID = 0 для "Избранного"
+                                                # В Max чат "Избранное" имеет ID = 0
+                                                msg.chat_id = 0
+                                                print(f"🔧 PyMax: используем ID = 0 для 'Избранного' к сообщению {msg.id}")
+                                        else:
+                                            print(f"⚠️ PyMax: chat_id не найден в payload для сообщения {msg.id}")
+                                            print(f"   Payload keys: {list(payload.keys())}")
                                     
                                     # Обрабатываем поле link для ответов на сообщения
                                     message_data = payload.get("message", {})

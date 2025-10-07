@@ -171,3 +171,14 @@ class GetGroupMembersPayload(CamelModel):
     marker: int
     chat_id: int
     count: int
+
+
+class ReactionData(CamelModel):
+    reaction_type: str = "EMOJI"
+    id: str
+
+
+class SetReactionPayload(CamelModel):
+    chat_id: int
+    message_id: str
+    reaction: ReactionData
