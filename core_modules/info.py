@@ -116,13 +116,13 @@ class InfoModule:
 
         # Формируем текст инфо с markdown форматированием
         info_text = self.config.get('custom_message') or (
-            f"🤖 {api.BOT_NAME} {api.BOT_VERSION} (#{api.BOT_VERSION_CODE})\n\n"
-            f"👤 Владелец: {owner_name}\n\n"
-            f"🖥 Информация о хосте:\n"
-            f"    🐍 Python: {python_version}\n"
-            f"    🧠 CPU: {cpu_display}\n"
-            f"    💾 RAM: {ram_display}\n\n"
-            f"📝 Префикс: '{PREFIX if PREFIX else '.'}'"
+            f"🤖 **{api.BOT_NAME}** *{api.BOT_VERSION} (#{api.BOT_VERSION_CODE})*\n\n"
+            f"👤 **Владелец:** {owner_name}\n\n"
+            f"🖥 **Информация о хосте:**\n"
+            f"    🐍 **Python:** {python_version}\n"
+            f"    🧠 **CPU:** {cpu_display}\n"
+            f"    💾 **RAM:** {ram_display}\n\n"
+            f"📝 **Префикс:** '{PREFIX if PREFIX else '.'}'"
         )
         banner = self.config.get('banner_url')
         if banner:
@@ -146,7 +146,7 @@ class InfoModule:
                         async with session.get(banner_url) as resp:
                             if resp.status != 200:
                                 # Если скачать не удалось, отправляем просто текст
-                                await api.send(chat_id, info_text, notify=True) 
+                                await api.send(chat_id, info_text, notify=True, markdown=True) 
                                 return
                             suffix = os.path.splitext(banner_url)[-1] or '.jpg'
                             with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
@@ -160,7 +160,7 @@ class InfoModule:
                 photo_data = photo.validate_photo()
                 if not photo_data:
                     # Если фото невалидно, отправляем просто текст
-                    await api.send(chat_id, info_text, notify=True)
+                    await api.send(chat_id, info_text, notify=True, markdown=True)
                     return
                 await api.send_photo(
                     chat_id=chat_id,
@@ -175,7 +175,7 @@ class InfoModule:
         chat_id = getattr(message, 'chat_id', None)
         if not chat_id:
             chat_id = await api.await_chat_id(message)
-        await api.send(chat_id, info_text, notify=True)
+        await api.send(chat_id, info_text, notify=True, markdown=True)
 
 
     async def setinfo_command(self, api, message, args):

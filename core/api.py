@@ -7,8 +7,8 @@ import aiofiles
 
 # --- КОНФИГУРАЦИЯ БОТА ---
 BOT_NAME = "Maxli"
-BOT_VERSION = "0.3.0" # Повышаем версию
-BOT_VERSION_CODE = 31
+BOT_VERSION = "0.3.1" # Повышаем версию
+BOT_VERSION_CODE = 32
 MODULES_DIR = Path("modules")
 LOG_BUFFER = []  # Глобальный буфер логов (последние строки)
 
@@ -226,27 +226,123 @@ class API:
         print(f"⚠️ Fallback: ищем chat_id для сообщения {message.id}")
         return await self.await_chat_id(message)
 
-    async def edit(self, message, text, **kwargs):
-        """Безопасно редактирует сообщение."""
-        # Используем chat_id из сообщения, если он есть
+    async def edit(self, message, text, markdown=False, **kwargs):
+        """Безопасно редактирует сообщение.
+        Если markdown=True — парсим в clean_text + элементы (UTF-16) и:
+          1) пробуем edit_message(..., elements=elements)
+          2) если не поддерживается — пробуем edit_message(text only)
+          3) если edit возвращает None или падает — отправляем новое сообщение с элементами
+        """
+        # Получаем chat_id (как раньше)
         chat_id = getattr(message, 'chat_id', None)
         if chat_id is None:
             chat_id = await self.await_chat_id(message)
         if chat_id is None:
             await log_critical_error(Exception("await_chat_id timeout"), message, self.client)
             return
+
+        notify = kwargs.pop("notify", False)
+
         try:
-            print(f"📝 Пытаемся отредактировать сообщение {message.id} в чате {chat_id}")
-            result = await self.client.edit_message(chat_id=chat_id, message_id=message.id, text=text, **kwargs)
-            if result is None:
-                # Если редактирование не удалось, отправляем новое сообщение
-                print(f"⚠️ Редактирование не удалось, отправляем новое сообщение в чат {chat_id}")
-                return await self.client.send_message(chat_id=chat_id, text=text, notify=True)
-            print(f"✅ Сообщение успешно отредактировано")
-            return result
+            msg_id = getattr(message, "id", None)
+            print(f"📝 Пытаемся отредактировать сообщение {msg_id} в чате {chat_id}")
+
+            if markdown:
+                # Парсим markdown в clean_text + элементы (UTF-16 индексы)
+                from pymax.markdown_parser import MarkdownParser
+                parser = MarkdownParser()
+                clean_text, elements = parser.parse_to_max_format(text)
+                print(f"📝 Markdown парсинг (edit): '{text}' -> '{clean_text}' с {len(elements)} элементами")
+                print(f"🔍 Элементы: {elements}")
+
+                # 1) Попытка: редактирование с элементами (если клиент поддерживает)
+                try:
+                    result = await self.client.edit_message(
+                        chat_id=chat_id,
+                        message_id=msg_id,
+                        text=clean_text,
+                        elements=elements,
+                        **kwargs
+                    )
+                except TypeError as te:
+                    # Клиент, вероятно, не принимает elements — попробуем без него
+                    print(f"⚠️ client.edit_message не поддерживает elements (TypeError): {te}; пробуем edit без элементов")
+                    try:
+                        result = await self.client.edit_message(
+                            chat_id=chat_id,
+                            message_id=msg_id,
+                            text=clean_text,
+                            **kwargs
+                        )
+                    except Exception as e2:
+                        print(f"⚠️ Редактирование (text only) тоже провалилось: {e2}")
+                        result = None
+                except Exception as e:
+                    # Любая другая ошибка — логируем и считаем, что редактирование не удалось
+                    print(f"⚠️ Ошибка при попытке edit_message с elements: {e}")
+                    result = None
+
+                # Если редактирование вернуло None => делаем fallback — отправляем новое сообщение с элементами
+                if result is None:
+                    print(f"⚠️ Редактирование не удалось или клиент не поддерживает elements — отправляем новое сообщение с элементами в чат {chat_id}")
+                    return await self._send_message_with_elements(
+                        chat_id=chat_id,
+                        text=clean_text,
+                        elements=elements,
+                        notify=notify,
+                        **kwargs
+                    )
+
+                print(f"✅ Сообщение успешно отредактировано (включая элементы при поддержке клиента)")
+                return result
+
+            else:
+                # Обычное редактирование без markdown
+                try:
+                    result = await self.client.edit_message(chat_id=chat_id, message_id=message.id, text=text, **kwargs)
+                except Exception as e:
+                    print(f"⚠️ Ошибка при обычном редактировании: {e}")
+                    result = None
+
+                if result is None:
+                    print(f"⚠️ Редактирование не удалось, отправляем новое обычное сообщение в чат {chat_id}")
+                    return await self.client.send_message(chat_id=chat_id, text=text, notify=notify)
+                print(f"✅ Сообщение успешно отредактировано")
+                return result
+
         except Exception as e:
+            # Общая обработка ошибок: логируем и пытаемся fallback-send
             print(f"❌ Ошибка при редактировании: {e}")
+            import traceback
+            print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
             await log_critical_error(e, message, self.client, chat_id)
+
+            # Fallback — если markdown, отправляем новое сообщение с элементами; иначе обычное сообщение
+            if markdown:
+                try:
+                    from pymax.markdown_parser import MarkdownParser
+                    parser = MarkdownParser()
+                    clean_text, elements = parser.parse_to_max_format(text)
+                    print(f"📤 Попытка отправить новое сообщение с форматированием после ошибки редактирования")
+                    return await self._send_message_with_elements(
+                        chat_id=chat_id,
+                        text=clean_text,
+                        elements=elements,
+                        notify=notify,
+                        **kwargs
+                    )
+                except Exception as e2:
+                    print(f"❌ Ошибка при отправке fallback-сообщения с форматированием: {e2}")
+                    print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+                    return None
+            else:
+                try:
+                    print(f"📤 Попытка отправить новое обычное сообщение после ошибки редактирования")
+                    return await self.client.send_message(chat_id=chat_id, text=text, notify=notify)
+                except Exception as e3:
+                    print(f"❌ Ошибка при отправке fallback-plain сообщения: {e3}")
+                    print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+                    return None
 
     async def send(self, chat_id, text, markdown=False, **kwargs):
         notify = kwargs.pop("notify", False)
