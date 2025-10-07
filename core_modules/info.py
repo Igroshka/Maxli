@@ -116,13 +116,13 @@ class InfoModule:
 
         # Формируем текст инфо с markdown форматированием
         info_text = self.config.get('custom_message') or (
-            f"🤖 **{api.BOT_NAME}** *{api.BOT_VERSION} (#{api.BOT_VERSION_CODE})*\n\n"
-            f"👤 **Владелец:** {owner_name}\n\n"
-            f"🖥 **Информация о хосте:**\n"
-            f"    🐍 **Python:** {python_version}\n"
-            f"    🧠 **CPU:** {cpu_display}\n"
-            f"    💾 **RAM:** {ram_display}\n\n"
-            f"📝 **Префикс:** '{PREFIX if PREFIX else '.'}'"
+            f"🤖 {api.BOT_NAME} {api.BOT_VERSION} (#{api.BOT_VERSION_CODE})\n\n"
+            f"👤 Владелец: {owner_name}\n\n"
+            f"🖥 Информация о хосте:\n"
+            f"    🐍 Python: {python_version}\n"
+            f"    🧠 CPU: {cpu_display}\n"
+            f"    💾 RAM: {ram_display}\n\n"
+            f"📝 Префикс: '{PREFIX if PREFIX else '.'}'"
         )
         banner = self.config.get('banner_url')
         if banner:
