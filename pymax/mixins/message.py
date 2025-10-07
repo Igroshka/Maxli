@@ -159,20 +159,26 @@ class MessageMixin(ClientProtocol):
             return None
 
     async def edit_message(
-        self, chat_id: int, message_id: int, text: str
+        self, chat_id: int, message_id: int, text: str, elements: list = None
     ) -> Message | None:
         """
         Редактирует сообщение.
+        Args:
+            chat_id: ID чата
+            message_id: ID сообщения
+            text: Текст сообщения
+            elements: Список элементов форматирования (markdown)
         """
         try:
             self.logger.info(
-                "Editing message chat_id=%s message_id=%s", chat_id, message_id
+                "Editing message chat_id=%s message_id=%s with %d elements",
+                chat_id, message_id, len(elements) if elements else 0
             )
             payload = EditMessagePayload(
                 chat_id=chat_id,
                 message_id=message_id,
                 text=text,
-                elements=[],
+                elements=elements or [],
                 attaches=[],
             ).model_dump(by_alias=True)
             data = await self._send_and_wait(opcode=Opcode.MSG_EDIT, payload=payload)

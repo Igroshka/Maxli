@@ -7,8 +7,8 @@ import aiofiles
 
 # --- КОНФИГУРАЦИЯ БОТА ---
 BOT_NAME = "Maxli"
-BOT_VERSION = "0.3.1" # Повышаем версию
-BOT_VERSION_CODE = 32
+BOT_VERSION = "0.3.2" # Повышаем версию
+BOT_VERSION_CODE = 33
 MODULES_DIR = Path("modules")
 LOG_BUFFER = []  # Глобальный буфер логов (последние строки)
 
@@ -159,35 +159,9 @@ class API:
             self.message_to_chat_cache[message_id_int] = 0
             return 0
 
-        # 3. Ожидаем обновления чатов (основной способ)
-        print(f"⏳ Ожидаем обновления чатов...")
-        for attempt in range(50): # Увеличили до 5 секунд
-            for conv in (self.client.dialogs + self.client.chats):
-                if conv.last_message and conv.last_message.id == message_id_int:
-                    print(f"✅ Найден чат {conv.id} после ожидания (попытка {attempt + 1})")
-                    self.message_to_chat_cache[message_id_int] = conv.id
-                    return conv.id
-            
-            # Показываем прогресс каждые 10 попыток
-            if attempt % 10 == 0 and attempt > 0:
-                print(f"⏳ Ожидание... попытка {attempt + 1}/50")
-            await asyncio.sleep(0.1)
-
-        # 4. Fallback: используем last_known_chat_id если сообщение от нас
-        if hasattr(self, 'me') and self.me and message.sender == self.me.id and self.last_known_chat_id:
-            # НЕ используем last_known_chat_id для сообщений из "Избранного"
-            if hasattr(message, 'chat_id') and message.chat_id == 0:
-                print(f"⚠️ Сообщение из 'Избранного' (chat_id=0), не используем last_known_chat_id")
-                return 0
-            print(f"⚠️ Fallback: используем last_known_chat_id = {self.last_known_chat_id}")
-            return self.last_known_chat_id
-
-        # 5. Последняя попытка: ищем любой чат с нашим ID
-        if hasattr(self, 'me') and self.me and message.sender == self.me.id:
-            for dialog in self.client.dialogs:
-                if str(self.me.id) in dialog.participants:
-                    print(f"⚠️ Последняя попытка: используем диалог {dialog.id}")
-                    return dialog.id
+        # 3. Уведомляем о неудаче и возвращаем None
+        print(f"❌ Не удалось найти чат для сообщения {message_id_int}")
+        return None
 
         print(f"❌ Не удалось найти chat_id для сообщения {message_id_int} от {message.sender}")
         
@@ -249,13 +223,13 @@ class API:
 
             if markdown:
                 # Парсим markdown в clean_text + элементы (UTF-16 индексы)
-                from pymax.markdown_parser import MarkdownParser
-                parser = MarkdownParser()
-                clean_text, elements = parser.parse_to_max_format(text)
+                from pymax.markdown_parser import get_markdown_parser
+                parser = get_markdown_parser()
+                clean_text, elements = parser.parse(text)
                 print(f"📝 Markdown парсинг (edit): '{text}' -> '{clean_text}' с {len(elements)} элементами")
                 print(f"🔍 Элементы: {elements}")
 
-                # 1) Попытка: редактирование с элементами (если клиент поддерживает)
+                # 1) Редактирование с элементами
                 try:
                     result = await self.client.edit_message(
                         chat_id=chat_id,
@@ -320,9 +294,9 @@ class API:
             # Fallback — если markdown, отправляем новое сообщение с элементами; иначе обычное сообщение
             if markdown:
                 try:
-                    from pymax.markdown_parser import MarkdownParser
-                    parser = MarkdownParser()
-                    clean_text, elements = parser.parse_to_max_format(text)
+                    from pymax.markdown_parser import get_markdown_parser
+                    parser = get_markdown_parser()
+                    clean_text, elements = parser.parse(text)
                     print(f"📤 Попытка отправить новое сообщение с форматированием после ошибки редактирования")
                     return await self._send_message_with_elements(
                         chat_id=chat_id,
@@ -346,24 +320,21 @@ class API:
 
     async def send(self, chat_id, text, markdown=False, **kwargs):
         notify = kwargs.pop("notify", False)
-        
         # Проверяем валидность chat_id (0 - это валидный ID для "Избранного")
         if chat_id is None:
             print(f"❌ Некорректный chat_id в send: {chat_id}")
             return None
-        
         # Специальная обработка для чата "Избранное"
         if chat_id == 0:
             print(f"🔧 Отправка в чат 'Избранное' с ID: {chat_id}")
             print(f"🔧 Используем ID = 0 для отправки в 'Избранное'")
-        
         # Если включен markdown, парсим текст
         if markdown:
-            from pymax.markdown_parser import markdown_parser
-            clean_text, elements = markdown_parser.parse_to_max_format(text)
+            from pymax.markdown_parser import get_markdown_parser
+            parser = get_markdown_parser()
+            clean_text, elements = parser.parse(text)
             print(f"📝 Markdown парсинг: '{text}' -> '{clean_text}' с {len(elements)} элементами")
             print(f"🔍 Элементы: {elements}")
-            
             # Отправляем сообщение с элементами форматирования
             return await self._send_message_with_elements(
                 chat_id=chat_id, 
@@ -377,121 +348,41 @@ class API:
     
     async def _send_message_with_elements(self, chat_id, text, elements, notify=False, **kwargs):
         """Отправляет сообщение с элементами форматирования."""
-        try:
-            from pymax.static import Opcode
-            from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage
-            import time
-            
-            # Проверяем валидность chat_id
-            if chat_id is None:
-                print(f"❌ Некорректный chat_id: {chat_id}")
-                return None
-            
-            print(f"📤 Отправляем сообщение с форматированием в чат {chat_id}")
-            print(f"   Текст: {text}")
-            print(f"   Элементы: {elements}")
-            
-            # Создаем payload для сообщения с элементами
-            message_payload = SendMessagePayloadMessage(
-                text=text,
-                cid=int(time.time() * 1000),
-                elements=elements,
-                attaches=[],
-                link=None
-            )
-            
-            payload = SendMessagePayload(
-                chat_id=chat_id,
-                message=message_payload,
-                notify=notify
-            ).model_dump(by_alias=True)
-            
-            print(f"🔍 Payload для отправки: {payload}")
-            
-            data = await self.client._send_and_wait(
-                opcode=Opcode.MSG_SEND,
-                payload=payload
-            )
-            
-            print(f"🔍 Ответ от сервера: {data}")
-            
-            if error := data.get("payload", {}).get("error"):
-                print(f"❌ Ошибка отправки сообщения с форматированием: {error}")
-                return None
-                
-            print(f"✅ Сообщение с форматированием успешно отправлено")
-            return data
-            
-        except Exception as e:
-            print(f"❌ Ошибка при отправке сообщения с форматированием: {e}")
-            import traceback
-            print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+        from pymax.static import Opcode
+        from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage
+        import time
+        # Проверяем валидность chat_id
+        if chat_id is None:
+            print(f"❌ Некорректный chat_id: {chat_id}")
             return None
-    
-    async def _send_photo_with_elements(self, chat_id, text, elements, photo, notify=False, **kwargs):
-        """Отправляет фотографию с элементами форматирования."""
-        try:
-            from pymax.static import Opcode
-            from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage, AttachPhotoPayload
-            import time
-            
-            # Проверяем валидность chat_id
-            if chat_id is None:
-                print(f"❌ Некорректный chat_id в _send_photo_with_elements: {chat_id}")
-                return None
-            
-            print(f"📤 Отправляем фотографию с форматированием в чат {chat_id}")
-            print(f"   Текст: {text}")
-            print(f"   Элементы: {elements}")
-            
-            # Загружаем фотографию
-            attach = await self.client._upload_photo(photo)
-            if not attach or not attach.photo_token:
-                print(f"❌ Не удалось загрузить фотографию")
-                return None
-            
-            # Создаем вложения для фотографии
-            attaches = [
-                AttachPhotoPayload(photo_token=attach.photo_token).model_dump(by_alias=True)
-            ]
-            
-            # Создаем payload для сообщения с элементами и фотографией
-            message_payload = SendMessagePayloadMessage(
-                text=text,
-                cid=int(time.time() * 1000),
-                elements=elements,
-                attaches=attaches,
-                link=None
-            )
-            
-            payload = SendMessagePayload(
-                chat_id=chat_id,
-                message=message_payload,
-                notify=notify
-            ).model_dump(by_alias=True)
-            
-            print(f"🔍 Payload для отправки фото: {payload}")
-            
-            data = await self.client._send_and_wait(
-                opcode=Opcode.MSG_SEND,
-                payload=payload
-            )
-            
-            print(f"🔍 Ответ от сервера: {data}")
-            
-            if error := data.get("payload", {}).get("error"):
-                print(f"❌ Ошибка отправки фотографии с форматированием: {error}")
-                return None
-                
-            print(f"✅ Фотография с форматированием успешно отправлена")
-            return data
-            
-        except Exception as e:
-            print(f"❌ Ошибка при отправке фотографии с форматированием: {e}")
-            import traceback
-            print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
+        print(f"📤 Отправляем сообщение с форматированием в чат {chat_id}")
+        print(f"   Текст: {text}")
+        print(f"   Элементы: {elements}")
+        # Создаем payload для сообщения с элементами
+        message_payload = SendMessagePayloadMessage(
+            text=text,
+            cid=int(time.time() * 1000),
+            elements=elements,
+            attaches=[],
+            link=None
+        )
+        payload = SendMessagePayload(
+            chat_id=chat_id,
+            message=message_payload,
+            notify=notify
+        ).model_dump(by_alias=True)
+        print(f"🔍 Payload для отправки: {payload}")
+        data = await self.client._send_and_wait(
+            opcode=Opcode.MSG_SEND,
+            payload=payload
+        )
+        print(f"🔍 Ответ от сервера: {data}")
+        if error := data.get("payload", {}).get("error"):
+            print(f"❌ Ошибка отправки сообщения с форматированием: {error}")
             return None
-    
+        print(f"✅ Сообщение с форматированием успешно отправлено")
+        return data
+
     async def send_file(self, chat_id, file_path, text="", markdown=False, **kwargs):
         """Отправляет файл в чат."""
         try:
@@ -501,16 +392,11 @@ class API:
             file_path = Path(file_path)
             if not file_path.exists():
                 raise FileNotFoundError(f"Файл {file_path} не найден")
-            
-            print(f"🔍 DEBUG: Отправляем файл {file_path.name} в чат {chat_id}")
-            
-            # Читаем содержимое файла
+
             async with aiofiles.open(file_path, 'rb') as f:
                 file_content = await f.read()
             
-            print(f"✅ Файл прочитан, размер: {len(file_content)} байт")
-            
-            # Получаем URL для загрузки файла
+            # Получаем URL для загрузки
             upload_url = await self._get_file_upload_url()
             if not upload_url:
                 raise Exception("Не удалось получить URL для загрузки файла")
@@ -531,8 +417,9 @@ class API:
             
             # Если включен markdown, парсим текст
             if markdown:
-                from pymax.markdown_parser import markdown_parser
-                clean_text, elements = markdown_parser.parse_to_max_format(text)
+                from pymax.markdown_parser import get_markdown_parser
+                parser = get_markdown_parser()
+                clean_text, elements = parser.parse_to_max_format(text)
                 print(f"📝 Markdown парсинг для файла: '{text}' -> '{clean_text}' с {len(elements)} элементами")
                 
                 # Отправляем сообщение с файлом и элементами форматирования

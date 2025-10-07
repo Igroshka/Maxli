@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import re
 from typing import List, Dict, Any, Tuple
 
@@ -29,6 +30,60 @@ class MarkdownParser:
             ("EMPHASIZED", re.compile(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)')),
         ]
 
+    def parse(self, text: str) -> Tuple[str, List[Dict[str, Any]]]:
+        if not text:
+            return "", []
+
+        matches = self._collect_matches(text)
+        if not matches:
+            return text, []
+
+        selected = self._select_non_overlapping(matches)
+        selected.sort(key=lambda m: m["start"])
+
+        clean_parts = []
+        elements: List[Dict[str, Any]] = []
+        last = 0
+        
+        for m in selected:
+            start, end = m["start"], m["end"]
+
+            # кусок между последним матчем и текущим
+            if last <= start:
+                middle = text[last:start]
+                clean_parts.append(middle)
+
+            # видимый контент
+            content = m["content"]
+            clean_parts.append(content)
+
+            # Используем from и length вместо start/end как ожидает сервер
+            clean_text_so_far = "".join(clean_parts)
+            from_index = len(clean_text_so_far) - len(content)  # Позиция начала контента
+            
+            elem = {
+                "type": m["type"],
+                "from": utf16_index(clean_text_so_far, from_index),
+                "length": utf16_length(content),
+                "content": content
+            }
+
+            if m["type"] == "LINK":
+                elem["attributes"] = {"url": m["url"]}
+
+            elements.append(elem)
+            last = end
+
+        # остаток после последнего матча
+        if last < len(text):
+            clean_parts.append(text[last:])
+
+        return "".join(clean_parts), elements
+
+    def parse_to_max_format(self, text: str) -> Tuple[str, List[Dict[str, Any]]]:
+        """Алиас для parse() для поддержки совместимости."""
+        return self.parse(text)
+    
     def _collect_matches(self, text: str):
         matches = []
         for t, p in self.patterns:
@@ -57,79 +112,13 @@ class MarkdownParser:
                 occupied_until = m["end"]
         return selected
 
-    def parse(self, text: str) -> Tuple[str, List[Dict[str, Any]]]:
-        if not text:
-            return "", []
 
-        matches = self._collect_matches(text)
-        if not matches:
-            return text, []
+_markdown_parser = None
 
-        selected = self._select_non_overlapping(matches)
-        selected.sort(key=lambda m: m["start"])
 
-        clean_parts = []
-        elements: List[Dict[str, Any]] = []
-        last = 0
-        clean_pos_chars = 0  # позиция в чистом тексте (в Python-символах)
-
-        for m in selected:
-            start, end = m["start"], m["end"]
-
-            # кусок между последним матчем и текущим
-            if last <= start:
-                middle = text[last:start]
-                clean_parts.append(middle)
-                clean_pos_chars += len(middle)
-
-            # видимый контент
-            content = m["content"]
-            clean_parts.append(content)
-
-            # ВНИМАНИЕ: сервер ждёт UTF-16 индексы -> переводим
-            from_utf16 = utf16_index("".join(clean_parts), len("".join(clean_parts)) - len(content))
-            length_utf16 = utf16_length(content)
-
-            el = {"type": m["type"], "from": from_utf16, "length": length_utf16}
-            if m["url"]:
-                el["attributes"] = {"url": m["url"]}
-            elements.append(el)
-
-            clean_pos_chars += len(content)
-            last = end
-
-        # остаток
-        tail = text[last:]
-        clean_parts.append(tail)
-        clean_text = "".join(clean_parts)
-
-        # --- дополнительная проверка (для отладки; можно убрать в проде) ---
-        # убедимся, что slice по utf16-позициям соответствует содержимому
-        # Для этого мапим utf16->python (обратное преобразование) – легкая проверка:
-        for el, m in zip(elements, selected):
-            # преобразуем utf16 'from' в python-индекс: найдем smallest i s.t. utf16_index(clean_text, i) == el['from']
-            target = el["from"]
-            # бинарный поиск по python-индексу
-            lo, hi = 0, len(clean_text)
-            while lo < hi:
-                mid = (lo + hi) // 2
-                if utf16_index(clean_text, mid) < target:
-                    lo = mid + 1
-                else:
-                    hi = mid
-            py_from = lo
-            py_len = 0
-            # длина в UTF-16 -> найдем python length, увеличивая, пока utf16 length не совпадёт
-            while utf16_index(clean_text, py_from + py_len) - utf16_index(clean_text, py_from) < el["length"]:
-                py_len += 1
-                if py_from + py_len > len(clean_text):
-                    break
-            slice_txt = clean_text[py_from:py_from+py_len]
-            if slice_txt != m["content"]:
-                # если не совпадает — сигнал для отладки
-                raise AssertionError(f"Validation failed: expected '{m['content']}', got slice '{slice_txt}' (py_from={py_from}, py_len={py_len})")
-
-        return clean_text, elements
-
-    def parse_to_max_format(self, text: str) -> Tuple[str, List[Dict[str, Any]]]:
-        return self.parse(text)
+def get_markdown_parser():
+    """Returns a singleton instance of MarkdownParser."""
+    global _markdown_parser
+    if _markdown_parser is None:
+        _markdown_parser = MarkdownParser()
+    return _markdown_parser

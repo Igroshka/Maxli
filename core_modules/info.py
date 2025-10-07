@@ -96,11 +96,13 @@ class InfoModule:
     async def info_command(self, api, message, args):
         snippet = getattr(message, 'text', '')
         api.LOG_BUFFER.append(f"[info] {snippet[:80]}")
-        # Удаляем исходное сообщение сразу
-        try:
-            await api.delete(message)
-        except Exception as e:
-            api.LOG_BUFFER.append(f"[info] Не удалось удалить сообщение: {e}")
+        # НЕ удаляем исходное сообщение, если баннера нет - будем его редактировать
+        banner = self.config.get('banner_url')
+        if banner:
+            try:
+                await api.delete(message)
+            except Exception as e:
+                api.LOG_BUFFER.append(f"[info] Не удалось удалить сообщение: {e}")
         python_version = platform.python_version()
         try:
             cpu_display = f"{psutil.cpu_percent()}%"
@@ -171,11 +173,15 @@ class InfoModule:
                 )
                 return
         
-        # Если баннера нет или не удалось отправить, отправляем как обычное сообщение
-        chat_id = getattr(message, 'chat_id', None)
-        if not chat_id:
-            chat_id = await api.await_chat_id(message)
-        await api.send(chat_id, info_text, notify=True, markdown=True)
+        # Если баннера нет или не удалось отправить, редактируем текущее сообщение
+        try:
+            await api.edit(message, info_text, markdown=True)
+        except Exception as e:
+            # Если редактирование не удалось (например, сообщение уже удалено), отправляем новое
+            chat_id = getattr(message, 'chat_id', None)
+            if not chat_id:
+                chat_id = await api.await_chat_id(message)
+            await api.send(chat_id, info_text, notify=True, markdown=True)
 
 
     async def setinfo_command(self, api, message, args):

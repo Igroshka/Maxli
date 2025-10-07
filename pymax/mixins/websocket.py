@@ -23,7 +23,7 @@ class WebSocketMixin(ClientProtocol):
         self, opcode: int, payload: dict[str, Any], cmd: int = 0
     ) -> dict[str, Any]:
         self._seq += 1
-
+ 
         msg = BaseWebSocketMessage(
             ver=11,
             cmd=cmd,
