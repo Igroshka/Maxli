@@ -81,7 +81,7 @@ async def message_handler(message: Message):
 @client.on_start
 async def startup():
     api.set_me(client.me)
-    
+     
     # Проверяем информацию о перезапуске
     from core_modules.restart import check_restart_info
     await check_restart_info(api)

@@ -121,7 +121,7 @@ def check_duplicate_module_id(module_id: str, module_name: str) -> tuple[bool, s
     return False, ""
 
 def parse_module_header(path: Path):
-    header = {
+    header = { 
         "name": None, 
         "version": None, 
         "developer": None, 
@@ -150,18 +150,28 @@ def parse_module_header(path: Path):
 
 async def load_module(module_path: Path, api):
     module_name = module_path.stem
-    # Если модуль уже загружен — сначала аккуратно выгружаем, чтобы поддержать обновление/замену
-    if module_name in LOADED_MODULES:
-        # При перезагрузке не удаляем файл модуля с диска
-        unload_result = await unload_module(module_name, remove_file=False)
-        print(f"🔁 Перезагрузка модуля '{module_name}': {unload_result}")
     
+    # Проверяем, загружен ли модуль с таким же ID
+    header = parse_module_header(module_path)
+    module_id = header.get('id', module_name)
+    
+    # Если модуль с таким ID уже загружен, выгружаем его
+    existing_module = None
+    for name, data in LOADED_MODULES.items():
+        if data.get('header', {}).get('id') == module_id:
+            existing_module = name
+            break
+    
+    if existing_module:
+        # При перезагрузке не удаляем файл модуля с диска
+        unload_result = await unload_module(existing_module, remove_file=False)
+        print(f"🔁 Заменяем модуль '{existing_module}' на '{module_name}': {unload_result}")
+    
+        
     # Сохраняем состояние до загрузки для возможного отката
     was_module_loaded = module_name in LOADED_MODULES
     original_commands = {}
     original_watchers = []
-    
-    header = parse_module_header(module_path)
     
     # Валидация обязательных полей
     required_fields = ["name", "version", "developer", "min-maxli", "id"]
@@ -176,11 +186,7 @@ async def load_module(module_path: Path, api):
     if not is_valid:
         return f"❌ Ошибка валидации ID модуля: {error_msg}"
     
-    # Проверка на дублирование ID (только если это не перезагрузка того же модуля)
-    if module_name not in LOADED_MODULES:
-        is_duplicate, duplicate_msg = check_duplicate_module_id(module_id, module_name)
-        if is_duplicate:
-            return f"❌ Ошибка дублирования ID: {duplicate_msg}"
+        # Проверка на дублирование ID больше не нужна, так как мы заменяем модули с одинаковым ID
     
     # Переименование файла модуля по ID, если ID отличается от имени файла
     if module_id != module_name:
@@ -247,19 +253,21 @@ async def load_module(module_path: Path, api):
             if module_name in sys.modules: del sys.modules[module_name]
             return f"❌ Ошибка: в модуле '{module_name}' нет функции register()."
     except Exception as e:
-        # Откат при критической ошибке
+                # Откат при критической ошибке
         print(f"❌ Критическая ошибка при загрузке '{module_name}': {e}")
+        import traceback
+        print(f"🔍 Traceback: {traceback.format_exc()}")
         await rollback_module(module_name, was_module_loaded, original_commands, original_watchers)
         
-        # Удаляем файл модуля, если он был создан при загрузке
-        if not was_module_loaded and module_path.exists():
+        # Удаляем файл сломанного модуля
+        if module_path.exists():
             try:
                 module_path.unlink()
-                print(f"🧹 Удален файл модуля: {module_path}")
+                print(f"🧹 Удален файл сломанного модуля: {module_path}")
             except Exception as delete_error:
                 print(f"⚠️ Не удалось удалить файл модуля: {delete_error}")
         
-        return f"❌ Критическая ошибка при загрузке '{module_name}': {e}"
+        return f"❌ Критическая ошибка при загрузке '{module_name}': {e}. Файл модуля удален."
 
 async def rollback_module(module_name, was_loaded, original_commands, original_watchers):
     """Откатывает изменения модуля при ошибке загрузки."""
@@ -320,6 +328,16 @@ async def unload_module(module_name: str, remove_file: bool = True):
     # Удаляем ID из словаря
     if module_id in MODULE_IDS:
         del MODULE_IDS[module_id]
+    
+    # Удаляем конфиг модуля
+    from core.config import config, save_config
+    if module_id in config:
+        del config[module_id]
+        print(f"🧹 Удален конфиг модуля '{module_id}'")
+    if module_name in config and module_name != module_id:
+        del config[module_name]
+        print(f"🧹 Удален конфиг модуля '{module_name}'")
+    save_config(config)
         
     del LOADED_MODULES[module_name]
     if module_name in sys.modules: del sys.modules[module_name]

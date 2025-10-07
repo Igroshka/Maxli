@@ -12,7 +12,7 @@ class InfoModule:
     async def configset_command(self, api, message, args):
         """Установить значение переменной в модуле: configset [1|2] [модуль] [переменная] [значение]"""
         if len(args) < 4:
-            await api.edit(message, "⚠️ Использование: configset [1|2] [модуль] [переменная] [значение]")
+            await api.edit(message, "⚠️ **Использование: configset [1|2] [модуль] [переменная] [значение]**")
             return
         mod_type = args[0]
         mod_id = args[1]
@@ -34,7 +34,7 @@ class InfoModule:
                         module_name = name
                         break
             if not module_name:
-                await api.edit(message, f"❌ Глобальный модуль '{mod_id}' не найден.")
+                await api.edit(message, f"❌ Глобальный модуль '{mod_id}' не найден.", markdown=True, notify=True)
                 return
             # Если секции для модуля нет — создаём
             if module_name not in config:
@@ -43,12 +43,12 @@ class InfoModule:
             if var_name.lower() == 'banner':
                 config[module_name]['banner'] = value
                 save_config(config)
-                await api.edit(message, f"✅ Баннер для '{module_name}' обновлён!")
+                await api.edit(message, f"✅ Баннер для '{module_name}' обновлён!", markdown=True, notify=True)
                 return
             # Любая другая переменная
             config[module_name][var_name] = value
             save_config(config)
-            await api.edit(message, f"✅ Значение {var_name} для '{module_name}' обновлено!")
+            await api.edit(message, f"✅ Значение {var_name} для '{module_name}' обновлено!", markdown=True, notify=True)
             return
         elif mod_type == '2':
             # Внешние модули (external_modules)
@@ -64,17 +64,17 @@ class InfoModule:
                         module_name = name
                         break
             if not module_name:
-                await api.edit(message, f"❌ Внешний модуль '{mod_id}' не найден.")
+                await api.edit(message, f"❌ Внешний модуль '{mod_id}' не найден.", markdown=True, notify=True)
                 return
             # Сохраняем в settings
             if 'settings' not in config['external_modules'][module_name]:
                 config['external_modules'][module_name]['settings'] = {}
             config['external_modules'][module_name]['settings'][var_name] = value
             save_config(config)
-            await api.edit(message, f"✅ Значение {var_name} для внешнего модуля '{module_name}' обновлено!")
+            await api.edit(message, f"✅ Значение {var_name} для внешнего модуля '{module_name}' обновлено!", markdown=True, notify=True)
             return
         else:
-            await api.edit(message, "❌ Первый аргумент должен быть 1 (глобальный) или 2 (внешний) модуль.")
+            await api.edit(message, "❌ Первый аргумент должен быть 1 (глобальный) или 2 (внешний) модуль.", markdown=True, notify=True)
             return
     # Кеш для баннера info: url -> (путь к файлу, file_id/attach)
     _banner_cache = {
@@ -184,26 +184,7 @@ class InfoModule:
             await api.send(chat_id, info_text, notify=True, markdown=True)
 
 
-    async def setinfo_command(self, api, message, args):
-        """Установить кастомный info-текст через config info setinfo <текст>"""
-        if not args:
-            await api.edit(message, "⚠️ Укажи текст для info.")
-            return
-        self.config['custom_message'] = ' '.join(args)
-        config['info'] = self.config
-        save_config(config)
-        await api.edit(message, "✅ Кастомный info-текст установлен!")
-
-    async def setbanner_command(self, api, message, args):
-        """Установить кастомный info-баннер через config info setbanner <url>"""
-        if not args:
-            await api.edit(message, "⚠️ Укажи URL баннера.")
-            return
-        # Гарантируем прямые слэши для URL
-        self.config['banner_url'] = args[0].replace('\\', '/').replace('\\', '/')
-        config['info'] = self.config
-        save_config(config)
-        await api.edit(message, "✅ Баннер для info обновлен!")
+    # Настройки info производятся через config
 
 
 # Регистрация команд через функцию register (ожидается loader'ом)
@@ -211,8 +192,6 @@ info_module = InfoModule()
 
 async def register(commands):
     commands['info'] = info_module.info_command
-    commands['setinfo'] = info_module.setinfo_command
-    commands['setbanner'] = info_module.setbanner_command
     commands['help'] = help_command
     commands['configset'] = info_module.configset_command
 
@@ -220,14 +199,14 @@ async def help_command(api, message, args):
     snippet = getattr(message, 'text', '')
     api.LOG_BUFFER.append(f"[help] {snippet[:80]}")
     if not args:
-        response = "📖 Справка по командам\n\n"
-        response += "⚙️ Системные команды:\n"
-        response += f"{', '.join(COMMANDS.keys())}\n\n"
+        response = "📖 **Справка по командам**\n\n"
+        response += " ⚙️ Системные команды:\n"
+        response += f"   {', '.join(COMMANDS.keys())}\n\n"
         if LOADED_MODULES:
-            response += "🧩 Модули:\n"
+            response += " 🧩 Модули:\n"
             for i, (name, data) in enumerate(LOADED_MODULES.items(), 1):
-                response += f"{i}. {data['header'].get('name', name)}\n"
-        response += f"\nИнфо о модуле: {PREFIX}help [имя/название/номер]"
+                response += f"   **{i}**. {data['header'].get('name', name)}\n"
+        response += f"\n*Инфо о модуле: {PREFIX}help [имя/название/номер]*"
     else:
         arg = ' '.join(args)
         found_module = None
@@ -235,11 +214,11 @@ async def help_command(api, message, args):
             if arg == str(i) or arg.lower() == name.lower() or arg.lower() == data['header'].get('name', '').lower():
                 found_module = data; break
         if not found_module:
-            response = f"❌ Модуль '{arg}' не найден."
+            response = f"❌ **Модуль '*{arg}*' не найден.**"
         else:
-            response = f"📖 Справка по модулю \"{found_module['header'].get('name')}\"\n"
+            response = f"📖 **Справка по модулю \"{found_module['header'].get('name')}\"**\n"
             ver = found_module['header'].get('version', 'N/A'); dev = found_module['header'].get('developer', 'N/A')
-            response += f"Версия: {ver} | Автор: {dev}\n"
+            response += f"**Версия:** *{ver}* | **Автор:** *{dev}*\n"
             
             # Добавляем описание модуля, если оно есть
             description = found_module['header'].get('description')
@@ -248,7 +227,7 @@ async def help_command(api, message, args):
             
             response += "\n"
             for cmd, desc in found_module['commands'].items():
-                response += f"▫️ {PREFIX}{cmd} - {desc}\n"
+                response += f"▫️ **{PREFIX}{cmd}** - *{desc}*\n"
     
     banner = get_banner_url("help")
     if banner:
@@ -262,7 +241,7 @@ async def help_command(api, message, args):
                 await api.delete(message)
             except Exception:
                 pass
-            await api.send_photo(chat_id, banner, response)
+            await api.send_photo(chat_id, banner, response, markdown=True, notify=True)
             return
 
-    await api.edit(message, response)
+    await api.edit(message, response, markdown=True, notify=True)

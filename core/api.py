@@ -4,14 +4,15 @@ from pathlib import Path
 import traceback
 import aiohttp
 import aiofiles
+import time
 
 # --- КОНФИГУРАЦИЯ БОТА ---
 BOT_NAME = "Maxli"
-BOT_VERSION = "0.3.2" # Повышаем версию
-BOT_VERSION_CODE = 33
+BOT_VERSION = "0.3.3" # Повышаем версию
+BOT_VERSION_CODE = 34
 MODULES_DIR = Path("modules")
 LOG_BUFFER = []  # Глобальный буфер логов (последние строки)
-
+ 
 def _append_log(text: str):
     import logging
     try:
@@ -200,7 +201,7 @@ class API:
         print(f"⚠️ Fallback: ищем chat_id для сообщения {message.id}")
         return await self.await_chat_id(message)
 
-    async def edit(self, message, text, markdown=False, **kwargs):
+    async def edit(self, message, text, markdown=False, attaches=None, **kwargs):
         """Безопасно редактирует сообщение.
         Если markdown=True — парсим в clean_text + элементы (UTF-16) и:
           1) пробуем edit_message(..., elements=elements)
@@ -318,7 +319,7 @@ class API:
                     print(f"🔍 DEBUG: Traceback: {traceback.format_exc()}")
                     return None
 
-    async def send(self, chat_id, text, markdown=False, **kwargs):
+    async def send(self, chat_id, text, markdown=False, attaches=None, **kwargs):
         notify = kwargs.pop("notify", False)
         # Проверяем валидность chat_id (0 - это валидный ID для "Избранного")
         if chat_id is None:
@@ -346,7 +347,7 @@ class API:
         else:
             return await self.client.send_message(text=text, chat_id=chat_id, notify=notify, **kwargs)
     
-    async def _send_message_with_elements(self, chat_id, text, elements, notify=False, **kwargs):
+    async def _send_message_with_elements(self, chat_id, text, elements, attaches=None, notify=False, **kwargs):
         """Отправляет сообщение с элементами форматирования."""
         from pymax.static import Opcode
         from pymax.payloads import SendMessagePayload, SendMessagePayloadMessage
@@ -359,11 +360,13 @@ class API:
         print(f"   Текст: {text}")
         print(f"   Элементы: {elements}")
         # Создаем payload для сообщения с элементами
+        if attaches is None:
+            attaches = []
         message_payload = SendMessagePayloadMessage(
             text=text,
             cid=int(time.time() * 1000),
             elements=elements,
-            attaches=[],
+            attaches=attaches,
             link=None
         )
         payload = SendMessagePayload(

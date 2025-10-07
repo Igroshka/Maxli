@@ -220,12 +220,7 @@ async def register(commands):
 
     # Простая очередь для хранящихся загруженных бэкапов перед применением
     PENDING_BACKUPS = {}
-
-    async def backup_command(api, message, args):
-        """Создаёт zip-архив с конфигом (без номера телефона), всеми файлами из modules/ и доп.файлами модулей (.json/.db).
-        В архив добавляется meta.json с метаданными: author, date, module_count, modules
-        """
-
+    
     async def backup_command(api, message, args):
         """Создаёт zip-архив с конфигом (без номера телефона), всеми файлами из modules/ и доп.файлами модулей (.json/.db).
         В архив добавляется meta.json с метаданными: author, date, module_count, modules
