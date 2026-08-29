@@ -1,20 +1,15 @@
-cat > .gitignore << 'EOF'
-
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
 venv/
 
-*.db
-*.sqlite3
-__pycache__/
-*.pyc
-*.md
-*.zip
-
-build/
-dist/
-Python-*/
-
-*.json
-!example_config.json
-
-modules/
-EOF
+config.json
+maxli-db.json
+maxli-db.json.broken
+maxli.log*
+sessions/
+/loaded_modules/
+/modules/
+!/modules/.gitkeep
+/tmp/

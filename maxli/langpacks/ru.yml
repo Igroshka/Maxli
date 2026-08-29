@@ -1,0 +1,46 @@
+# Пакет переводов Maxli — русский
+# Ключ: maxli.modules.<файл>.<строка>
+
+maxli.modules.help.name: "Помощь"
+maxli.modules.help.bad_module: "❌ Модуль {} не найден"
+maxli.modules.help.all_header: "{} модулей, {} команд"
+maxli.modules.help.no_desc: "Без описания"
+
+maxli.modules.maxli_info.name: "ИнфоMaxli"
+maxli.modules.maxli_info.owner: "Владелец"
+maxli.modules.maxli_info.uptime: "Аптайм"
+maxli.modules.maxli_info.prefix: "Префикс"
+
+maxli.modules.maxli_config.name: "Конфиг"
+maxli.modules.maxli_config.no_mod: "❌ Модуль {} не найден"
+maxli.modules.maxli_config.no_cfg: "❌ У модуля {} нет настроек"
+maxli.modules.maxli_config.set: "⚙️ **{}.{}** = {}"
+maxli.modules.maxli_config.invalid: "❌ Некорректное значение: {}"
+
+maxli.modules.loader.name: "Загрузчик"
+maxli.modules.loader.loading: "⏳ Загружаю модуль..."
+maxli.modules.loader.loaded: "✅ Модуль **{}** загружен"
+maxli.modules.loader.unloaded: "🗑 Модуль **{}** выгружен"
+maxli.modules.loader.not_found: "❌ Модуль {} не найден"
+maxli.modules.loader.error: "🚫 Не удалось загрузить модуль: {}"
+
+maxli.modules.settings.name: "Настройки"
+maxli.modules.maxli_settings.name: "НастройкиЯдра"
+maxli.modules.maxli_security.name: "Безопасность"
+maxli.modules.maxli_backup.name: "Бэкапы"
+maxli.modules.updater.name: "Обновления"
+maxli.modules.translations.name: "Переводы"
+maxli.modules.presets.name: "Пресеты"
+maxli.modules.quickstart.name: "Быстрый старт"
+maxli.modules.test.name: "Диагностика"
+
+maxli.modules.chats.name: "Чаты"
+maxli.modules.users.name: "Пользователи"
+maxli.modules.account.name: "Аккаунт"
+maxli.modules.messages.name: "Сообщения"
+
+maxli.modules.terminal.name: "Терминал"
+maxli.modules.terminal.running: "⏳ Выполняю..."
+
+maxli.modules.eval.name: "Eval"
+maxli.modules.eval.result: "Результат"

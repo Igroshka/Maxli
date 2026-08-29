@@ -1,378 +1,193 @@
-<p align="center">
-  <img src="https://github.com/Igroshka/Maxli/blob/main/logo.png?raw=true" alt="Maxli Logo" width="150" style="border-radius:50% !important;" />
-</p>
+# Maxli
 
-<h1 align="center">Maxli — UserBot для мессенджера "Max"</h1>
+Модульный юзербот для мессенджера **MAX**.
 
-<p align="center">
-  <a href="https://github.com/Igroshka/Maxli/stargazers"><img src="https://img.shields.io/github/stars/Igroshka/Maxli?style=for-the-badge&logo=github&color=FFC107" alt="Stars"></a>
-  <a href="https://github.com/Igroshka/Maxli/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Igroshka/Maxli?style=for-the-badge&color=8BC34A" alt="License"></a>
-  <a href="https://UserbotMax.t.me"><img src="https://img.shields.io/badge/Telegram-Новости-blue?style=for-the-badge&logo=telegram" alt="Telegram Channel"></a>
-</p>
+Архитектура повторяет [Heroku Userbot](https://github.com/coddrago/Heroku),
+транспорт — [PyMax 2.3.1](https://github.com/MaxApiTeam/PyMax) (`maxapi-python`).
 
-<p align="center">
-  ⚡️ Первый и лучший UserBot для мессенджера <b>Max</b> с удобной и гибкой системой модулей.  
-  <br>
-  Создан <a href="https://t.me/YouRooni">YouRooni</a> с ❤️
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/Igroshka/Maxli/refs/heads/main/banner1.png" alt="Maxli Banner" width="100%" style="border-radius:5% !important;" />
-</p>
-
----
-
-## 🚀 О проекте
-
-Maxli — это новаторский UserBot для мессенджера Max, разработанный для автоматизации рутинных действий и расширения стандартного функционала. Это первый в своем роде юзербот для данной платформы, предлагающий пользователям непревзойденные возможности.
-
-Проект работает на Python и использует библиотеку [PyMax (maxapi-python)](https://fresh-milkshake.github.io/pymax/) для взаимодействия с API мессенджера Max. Благодаря своей архитектуре, Maxli легко запускается как на VDS/VPS, так и на локальной машине, а его система плагинов обеспечивает простую кастомизацию и расширение.
-
----
-
-## ✨ Ключевые возможности
-
-- 🤖 **Автоматизация:** Настраивайте автоматические ответы, команды и сценарии
-- 🧩 **Гибкая система модулей:** Расширяйте функционал с помощью готовых плагинов или создавайте свои
-- 💬 **Поддержка чатов:** Стабильная работа в личных сообщениях и групповых чатах
-- 🚀 **Простая установка:** Готовые скрипты для быстрой установки на Windows и Linux
-- ⚙️ **Удобная настройка:** Конфигурация через простые и понятные файлы
-
----
-
-## 📢 Новости и поддержка
-
-Все актуальные новости, обновления и полезную информацию о проекте вы найдете в нашем официальном Telegram-канале.
-
-➡️ **Подписаться на канал:** [UserbotMax.t.me](https://UserbotMax.t.me)
-
----
-
-## 📋 Требования
-
-Перед установкой убедитесь, что у вас установлено:
-
-| Требование | Минимальная версия | Как проверить |
-|------------|-------------------|---------------|
-| Python | 3.12+ | `python --version` |
-| pip | Любая | `pip --version` |
-| Git | Любая | `git --version` |
-
-### Установка Python
-
-<details>
-<summary><b>🖥️ Windows</b></summary>
-
-1. Скачайте Python с официального сайта: https://www.python.org/downloads/
-2. **Важно:** При установке обязательно поставьте галочку ✅ **"Add Python to PATH"**
-3. Нажмите "Install Now"
-4. После установки откройте PowerShell и проверьте: `python --version`
-
-</details>
-
-<details>
-<summary><b>🐧 Linux (Ubuntu/Debian)</b></summary>
+## Установка
 
 ```bash
-sudo apt update
-sudo apt install python3.12 python3.12-venv python3-pip git -y
-```
-
-</details>
-
-<details>
-<summary><b>🍎 macOS</b></summary>
-
-```bash
-# Через Homebrew
-brew install python@3.12 git
-```
-
-</details>
-
----
-
-## 🛠️ Установка
-
-### 🖥️ Windows
-
-<details>
-<summary><b>📦 Способ 1: Автоматическая установка (рекомендуется)</b></summary>
-
-1. [Скачайте ZIP-архив](https://github.com/Igroshka/Maxli/archive/refs/heads/main.zip) или склонируйте репозиторий
-2. Распакуйте архив в удобную папку (например `C:\Maxli`)
-3. Запустите файл `install_windows.bat` двойным кликом
-4. Следуйте инструкциям в консоли:
-   - Введите номер телефона в формате `+79001234567`
-   - Введите код подтверждения из мессенджера Max
-5. Готово! Бот запущен 🎉
-
-</details>
-
-<details>
-<summary><b>⌨️ Способ 2: Ручная установка через PowerShell</b></summary>
-
-Откройте PowerShell и выполните команды по очереди:
-
-```powershell
-# 1. Клонируем репозиторий
-git clone https://github.com/Igroshka/Maxli.git
-
-# 2. Переходим в папку проекта
+git clone https://github.com/YouRooni/Maxli
 cd Maxli
-
-# 3. Создаём виртуальное окружение
-python -m venv venv
-
-# 4. Активируем виртуальное окружение
-venv\Scripts\activate
-
-# 5. Устанавливаем зависимости
 pip install -r requirements.txt
-
-# 6. Запускаем бота
-python main.py
+python -m maxli
 ```
 
-При первом запуске:
-- Введите номер телефона в формате `+79001234567`
-- Введите код подтверждения из мессенджера Max
+При первом запуске Maxli спросит номер телефона и код из SMS. Сессия ляжет в
+`sessions/maxli.db`, конфиг — в `config.json`, база — в `maxli-db.json`.
 
-</details>
-
----
-
-### 🐧 Linux
-
-<details>
-<summary><b>📦 Способ 1: Автоматическая установка (рекомендуется)</b></summary>
+QR-логин через web-клиент:
 
 ```bash
-# 1. Клонируем репозиторий
-git clone https://github.com/Igroshka/Maxli.git
-
-# 2. Переходим в папку
-cd Maxli
-
-# 3. Даём права на выполнение скрипта
-chmod +x install_linux.sh
-
-# 4. Запускаем установку
-./install_linux.sh
+python -m maxli --web
 ```
 
-Следуйте инструкциям:
-- Введите номер телефона в формате `+79001234567`
-- Введите код подтверждения из мессенджера Max
+## Аргументы
 
-</details>
+| Аргумент | Описание |
+|---|---|
+| `--phone`, `-p` | Номер телефона |
+| `--session` | Имя файла сессии (по умолчанию `maxli.db`) |
+| `--proxy` | Прокси для подключения |
+| `--web` | WebClient + QR-авторизация вместо SMS |
+| `--log-level` | Уровень логов (`DEBUG`/`INFO`/`WARNING`) |
+| `--no-modules` | Не загружать пользовательские модули |
+| `--root` | Разрешить запуск от root |
 
-<details>
-<summary><b>⌨️ Способ 2: Ручная установка</b></summary>
+## Системные модули и команды
 
-```bash
-# Всё в одной команде:
-git clone https://github.com/Igroshka/Maxli.git && cd Maxli && python3 -m venv venv && source venv/bin/activate && pip install -r requirements.txt && python3 main.py
-```
+### Ядро
 
-**Или пошагово:**
+| Модуль | Команды |
+|---|---|
+| **Help** | `.help [модуль]`, `.modinfo <модуль>` |
+| **MaxliInfo** | `.info`, `.ping` |
+| **Config** | `.config [модуль] [опция] [значение]`, `.resetcfg` |
+| **Settings** | `.maxli`, `.installation`, `.setprefix`, `.aliases`, `.addalias`, `.delalias`, `.blacklist`, `.unblacklist`, `.blacklistuser`, `.unblacklistuser`, `.blacklists`, `.getuser`, `.togglemod`, `.togglecmd`, `.disabled`, `.clearmodule`, `.cleardb` |
+| **MaxliSettings** | `.settings`, `.watchers`, `.watcher`, `.watcherbl`, `.whitelist`, `.unwhitelist`, `.coreprotection` |
+| **MaxliSecurity** | `.security`, `.owneradd`, `.ownerrm`, `.ownerlist`, `.sudoadd`, `.sudorm`, `.supportadd`, `.supportrm`, `.newsgroup`, `.sgroups`, `.sgroup`, `.sgroupadd`, `.sgroupdel`, `.delsgroup`, `.tsec`, `.tsecrm`, `.tsecclr` |
+| **Loader** | `.loadmod`, `.dlmod`, `.unloadmod`, `.reloadmod`, `.modsource`, `.ml`, `.mods`, `.repos`, `.addrepo`, `.delrepo`, `.clearmodules` |
+| **Updater** | `.update`, `.restart`, `.ubstop`, `.source`, `.changelog` |
+| **MaxliBackup** | `.backupdb`, `.restoredb`, `.backupmods`, `.backupall` |
+| **Translations** | `.setlang`, `.dllangpack`, `.langpacks`, `.reloadlang` |
+| **Presets** | `.presets`, `.loadpreset`, `.savepreset`, `.mypresets` |
+| **Tester** | `.logs`, `.clearlogs`, `.loglevel`, `.debugmods`, `.suspend`, `.dump` |
+| **Quickstart** | `.quickstart` |
+| **Terminal** | `.terminal` (`.sh`), `.kill` |
+| **Eval** | `.e`, `.db` |
 
-```bash
-# 1. Клонируем репозиторий
-git clone https://github.com/Igroshka/Maxli.git
+### Возможности MAX
 
-# 2. Переходим в папку проекта
-cd Maxli
+| Модуль | Команды |
+|---|---|
+| **Chats** | `.chats [запрос]` — список и поиск, `.chatinfo`, `.newgroup <название> [id...]`, `.joinchat <ссылка>`, `.previewchat <ссылка>`, `.leavechat`, `.delchat`, `.invite`, `.kick`, `.members`, `.joinreqs`, `.approve`, `.decline`, `.setgrname`, `.setgrdesc`, `.grsettings`, `.link`, `.relink` |
+| **Users** | `.user` (`.whois`), `.searchphone <+7...>`, `.contacts [запрос]`, `.addcontact`, `.delcontact`, `.sessions`, `.killsessions` |
+| **Account** | `.setname`, `.setbio`, `.setpfp`, `.folders`, `.newfolder`, `.delfolder`, `.check2fa`, `.set2fa`, `.del2fa` |
+| **Messages** | `.history [n]`, `.id`, `.forward` (`.fwd`), `.copy`, `.pin`, `.delmsg`, `.read`, `.react`, `.unreact`, `.reactions` |
 
-# 3. Создаём виртуальное окружение
-python3 -m venv venv
+### Чего в MAX нет
 
-# 4. Активируем виртуальное окружение
-source venv/bin/activate
+Inline-ботов, inline-кнопок, форм и галерей в MAX не существует, поэтому
+`inline_stuff`, `heroku_web` и весь inline-слой Heroku не портированы. Вместо
+`@loader.inline_handler` и `@loader.callback_handler` используй обычные команды
+и вотчеры.
 
-# 5. Устанавливаем зависимости
-pip install -r requirements.txt
-
-# 6. Запускаем бота
-python3 main.py
-```
-
-</details>
-
----
-
-### 🔄 Повторный запуск
-
-После установки для запуска бота достаточно:
-
-**Windows (PowerShell):**
-```powershell
-cd C:\путь\к\Maxli
-venv\Scripts\activate
-python main.py
-```
-
-**Linux:**
-```bash
-cd ~/Maxli
-source venv/bin/activate
-python3 main.py
-```
-
----
-
-## 🔄 Автозапуск
-
-<details>
-<summary><b>🖥️ Windows — через Планировщик задач</b></summary>
-
-1. Откройте Планировщик задач (нажмите `Win+R`, введите `taskschd.msc`)
-2. Нажмите **"Создать задачу..."** (не "Создать простую задачу")
-3. На вкладке **"Общие"**:
-   - Название: `Maxli`
-   - Поставьте галочку "Выполнять с наивысшими правами"
-4. На вкладке **"Триггеры"**:
-   - Нажмите "Создать..."
-   - Выберите "При входе в систему"
-   - ОК
-5. На вкладке **"Действия"**:
-   - Нажмите "Создать..."
-   - Действие: "Запуск программы"
-   - Программа: путь к `autostart.bat` в папке Maxli
-   - ОК
-6. Сохраните задачу
-
-</details>
-
-<details>
-<summary><b>🐧 Linux — через systemd</b></summary>
-
-1. Отредактируйте файл сервиса (укажите ваш путь и пользователя):
-   ```bash
-   nano maxli.service
-   ```
-   
-2. Скопируйте сервис в системную директорию:
-   ```bash
-   sudo cp maxli.service /etc/systemd/system/
-   ```
-
-3. Перезагрузите конфигурацию systemd:
-   ```bash
-   sudo systemctl daemon-reload
-   ```
-
-4. Включите автозапуск:
-   ```bash
-   sudo systemctl enable maxli
-   ```
-
-5. Запустите сервис:
-   ```bash
-   sudo systemctl start maxli
-   ```
-
-6. Проверьте статус:
-   ```bash
-   sudo systemctl status maxli
-   ```
-
-</details>
-
----
-
-## 📁 Структура проекта
-
-```
-Maxli/
-├── 📄 main.py              # ▶️ Основной файл для запуска
-├── 📁 core/                # ⚙️ Ядро и ключевые компоненты
-│   ├── api.py              #    API-обёртка над PyMax
-│   ├── config.py           #    Конфигурация
-│   └── loader.py           #    Загрузчик модулей
-├── 📁 core_modules/        # 🔧 Встроенные модули
-├── 📁 modules/             # 🧩 Ваши пользовательские модули
-├── 📁 mods/                # 📚 Документация по созданию модулей
-│   └── README.md           #    Руководство разработчика
-├── 📄 requirements.txt     # 📦 Список зависимостей
-├── 📄 install_windows.bat  # 🖥️ Скрипт установки для Windows
-├── 📄 install_linux.sh     # 🐧 Скрипт установки для Linux
-└── 📄 README.md            # 📄 Эта документация
-```
-
----
-
-## 🧩 Создание модулей
-
-Хотите создать свой модуль? Ознакомьтесь с [документацией для разработчиков](mods/README.md).
-
-Maxli использует библиотеку **[PyMax](https://fresh-milkshake.github.io/pymax/)** — вы можете использовать все её возможности в своих модулях!
-
-### Быстрый пример модуля:
+## Написание модулей
 
 ```python
-# name: Мой модуль
-# version: 1.0.0
-# developer: Ваше имя
-# id: my_module
-# min-maxli: 35
+# meta developer: @username
+# meta pic: https://example.com/pic.png
+# requires: aiohttp
+# min-maxli: 100
 
-async def hello_command(api, message, args):
-    """Простое приветствие."""
-    await api.edit(message, "👋 **Привет!**", markdown=True)
+from maxli import loader, utils
 
-async def register(api):
-    api.register_command("hello", hello_command)
+
+@loader.tds
+class ExampleMod(loader.Module):
+    """Пример модуля"""
+
+    strings = {"name": "Example"}
+
+    def __init__(self):
+        self.config = loader.ModuleConfig(
+            loader.ConfigValue(
+                "greeting",
+                "Привет",
+                lambda: "Текст приветствия",
+                validator=loader.validators.String(),
+            ),
+        )
+
+    async def client_ready(self):
+        self.counter = self.pointer("counter", 0)
+
+    @loader.command(alias="ex")
+    async def examplecmd(self, message):
+        """— поздороваться"""
+        await utils.answer(message, self.config["greeting"])
+
+    @loader.watcher("no_commands", "in")
+    async def watcher(self, message):
+        if "maxli" in (message.text or "").lower():
+            await message.react("❤️")
 ```
 
----
+### Разметка MAX
 
-## ❓ Частые вопросы
+MAX понимает markdown, а не HTML. Кроме `**жирного**`, `_курсива_`,
+`` `моно` `` и блоков ``` ``` ``` есть **заголовки** и **цитаты** —
+в `utils` для них готовые хелперы:
 
-<details>
-<summary><b>Где взять код подтверждения?</b></summary>
-
-Код придёт в мессенджер Max на ваш телефон после ввода номера.
-
-</details>
-
-<details>
-<summary><b>Бот не запускается, что делать?</b></summary>
-
-1. Убедитесь, что Python версии 3.12 или выше: `python --version`
-2. Проверьте, что виртуальное окружение активировано (в начале строки должно быть `(venv)`)
-3. Попробуйте переустановить зависимости: `pip install -r requirements.txt --force-reinstall`
-
-</details>
-
-<details>
-<summary><b>Как обновить бота?</b></summary>
-
-```bash
-cd Maxli
-git pull
-pip install -r requirements.txt --upgrade
+```python
+utils.heading("Заголовок")   # → # Заголовок
+utils.quote("строка\nещё")   # → > строка\n> ещё
+utils.mono("значение")       # → `значение`
+utils.code_block(output)     # → блок кода с обрезкой по лимиту
+utils.unmark(text)           # снимает маркеры разметки
 ```
 
-</details>
+⚠️ **Внутри цитаты и заголовка MAX не разбирает разметку.** `**жирный**`
+в цитате останется звёздочками, поэтому содержимое цитаты прогоняй через
+`utils.unmark()`, а акценты ставь в строке-заголовке над цитатой:
 
-<details>
-<summary><b>Как удалить сессию и войти заново?</b></summary>
+```python
+await utils.answer(
+    message,
+    f"🧩 **{name}**\n" + utils.quote("команд: 5\nвотчеров: 1"),
+)
+```
 
-Удалите файл `session.json` в папке проекта и перезапустите бота.
+Так устроен весь системный вывод: `.help` кладёт каждый модуль в свою цитату,
+`.config` — каждую настройку, `.chats` — каждый чат.
 
-</details>
+### Что даёт базовый класс
 
----
+- `self.client` — клиент PyMax
+- `self.db` — база данных, `self.get()` / `self.set()` / `self.pointer()`
+- `self.allmodules` — реестр модулей, `self.lookup("Имя")`
+- `self.strings["key"]` — строки из langpack-а
+- `self.config` — настройки модуля
+- `self.get_prefix()` — текущий префикс
+- `self.invoke("cmd", "args", message)` — вызов другой команды
 
-## 📜 Лицензия
+### Хуки жизненного цикла
 
-Этот проект распространяется под лицензией **Apache License 2.0**. 
+| Метод | Когда вызывается |
+|---|---|
+| `config_complete()` | Конфиг заполнен из БД |
+| `client_ready()` | Клиент MAX готов |
+| `on_dlmod()` | Первая загрузка через `.dlmod` |
+| `on_unload()` | Выгрузка или перезагрузка |
 
-Подробнее см. в файле [LICENSE](LICENSE).
+### Декораторы
 
----
+`@loader.command()`, `@loader.watcher()`, `@loader.raw_handler()`,
+`@loader.loop(interval=...)`, `@loader.tag(...)`, `@loader.ratelimit`,
+`@loader.owner`, `@loader.sudo`, `@loader.support`, `@loader.chat_admin`,
+`@loader.pm`, `@loader.unrestricted`.
 
-<p align="center">
-  <b>⭐ Если вам нравится проект, поставьте звезду на GitHub! ⭐</b>
-</p>
+## Структура
+
+```
+maxli/
+├── main.py          — сборка и запуск
+├── loader.py        — реестр модулей, декораторы
+├── types.py         — Module, ModuleConfig, ConfigValue
+├── dispatcher.py    — разбор команд, вотчеры, ratelimit
+├── security.py      — права доступа
+├── database.py      — JSON-хранилище
+├── translations.py  — Translator, Strings
+├── validators.py    — валидаторы конфига
+├── pointers.py      — самосохраняющиеся list/dict/set
+├── utils.py         — утилиты
+├── log.py           — логирование
+├── _internal.py     — restart / update
+├── langpacks/       — en.yml, ru.yml
+└── modules/         — системные модули
+```
+
+## Лицензия
+
+AGPLv3.

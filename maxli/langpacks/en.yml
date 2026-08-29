@@ -1,0 +1,46 @@
+# Maxli language pack — English
+# Key format: maxli.modules.<file>.<string>
+
+maxli.modules.help.name: "Help"
+maxli.modules.help.bad_module: "❌ Module {} not found"
+maxli.modules.help.all_header: "{} modules, {} commands"
+maxli.modules.help.no_desc: "No description"
+
+maxli.modules.maxli_info.name: "MaxliInfo"
+maxli.modules.maxli_info.owner: "Owner"
+maxli.modules.maxli_info.uptime: "Uptime"
+maxli.modules.maxli_info.prefix: "Prefix"
+
+maxli.modules.maxli_config.name: "Config"
+maxli.modules.maxli_config.no_mod: "❌ Module {} not found"
+maxli.modules.maxli_config.no_cfg: "❌ Module {} has no config"
+maxli.modules.maxli_config.set: "⚙️ **{}.{}** = {}"
+maxli.modules.maxli_config.invalid: "❌ Invalid value: {}"
+
+maxli.modules.loader.name: "Loader"
+maxli.modules.loader.loading: "⏳ Loading module..."
+maxli.modules.loader.loaded: "✅ Module **{}** loaded"
+maxli.modules.loader.unloaded: "🗑 Module **{}** unloaded"
+maxli.modules.loader.not_found: "❌ Module {} not found"
+maxli.modules.loader.error: "🚫 Failed to load module: {}"
+
+maxli.modules.settings.name: "Settings"
+maxli.modules.maxli_settings.name: "MaxliSettings"
+maxli.modules.maxli_security.name: "MaxliSecurity"
+maxli.modules.maxli_backup.name: "MaxliBackup"
+maxli.modules.updater.name: "Updater"
+maxli.modules.translations.name: "Translations"
+maxli.modules.presets.name: "Presets"
+maxli.modules.quickstart.name: "Quickstart"
+maxli.modules.test.name: "Tester"
+
+maxli.modules.chats.name: "Chats"
+maxli.modules.users.name: "Users"
+maxli.modules.account.name: "Account"
+maxli.modules.messages.name: "Messages"
+
+maxli.modules.terminal.name: "Terminal"
+maxli.modules.terminal.running: "⏳ Running..."
+
+maxli.modules.eval.name: "Eval"
+maxli.modules.eval.result: "Result"
