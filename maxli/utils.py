@@ -204,40 +204,103 @@ async def get_self_chat_id() -> int | None:
     return None
 
 
-def get_reply_id(message: Message) -> int | None:
-    """ID сообщения, на которое отвечает данное.
+def get_link(message: Message) -> dict | None:
+    """Поле ``link`` сообщения словарём.
 
-    В MAX ответ приходит в поле ``link`` вида
-    ``{"type": "REPLY", "messageId": 123}`` — pydantic-модель PyMax разрешает
-    дополнительные поля, поэтому читаем его напрямую.
+    PyMax не описывает ``link`` в модели, поэтому оно приходит как есть —
+    обычно словарём, но на всякий случай разбираем и pydantic-модель.
     """
     link = getattr(message, "link", None)
 
     if isinstance(link, dict):
-        if str(link.get("type", "")).upper() != "REPLY":
-            return None
+        return link
 
-        raw = link.get("messageId") or link.get("message_id")
-        if raw is None and isinstance(link.get("message"), dict):
-            raw = link["message"].get("id")
+    if link is None:
+        return None
 
-        with contextlib.suppress(TypeError, ValueError):
-            return int(raw)
+    with contextlib.suppress(Exception):
+        return link.model_dump(by_alias=True)
+
+    with contextlib.suppress(Exception):
+        return dict(vars(link))
 
     return None
 
 
+def get_reply_id(message: Message) -> int | None:
+    """ID сообщения, на которое отвечает данное.
+
+    В MAX ответ приходит в поле ``link`` вида
+    ``{"type": "REPLY", "messageId": 123}``, а само цитируемое сообщение
+    нередко лежит там же в ``message``.
+    """
+    link = get_link(message)
+
+    if not link:
+        return None
+
+    if str(link.get("type") or link.get("_type") or "").upper() != "REPLY":
+        return None
+
+    raw = link.get("messageId") or link.get("message_id") or link.get("id")
+
+    if raw is None and isinstance(link.get("message"), dict):
+        raw = link["message"].get("id")
+
+    with contextlib.suppress(TypeError, ValueError):
+        return int(raw)
+
+    return None
+
+
+def _bind(message: Message) -> Message:
+    """Привязывает сообщение к API, чтобы работали ``reply``/``delete`` и прочее."""
+    with contextlib.suppress(Exception):
+        from pymax.api.binding import bind_api_model
+
+        return bind_api_model(get_client()._app, message)
+
+    return message
+
+
 async def get_reply(message: Message) -> Message | None:
-    """Возвращает сообщение, на которое отвечает данное."""
+    """Возвращает сообщение, на которое отвечает данное.
+
+    MAX часто кладёт цитируемое сообщение прямо в ``link`` — тогда лишний
+    запрос не нужен. Если там его нет, догружаем по ID, а на совсем упрямых
+    сообщениях ищем в истории чата.
+    """
     reply_id = get_reply_id(message)
     chat_id = get_chat_id(message)
 
     if reply_id is None or chat_id is None:
         return None
 
-    with contextlib.suppress(Exception):
-        return await get_client().get_message(chat_id, reply_id)
+    link = get_link(message) or {}
+    inline = link.get("message")
 
+    if isinstance(inline, dict):
+        with contextlib.suppress(Exception):
+            reply = Message.model_validate(inline)
+
+            if reply.chat_id is None:
+                reply.chat_id = link.get("chatId") or link.get("chat_id") or chat_id
+
+            logger.debug("get_reply: взял сообщение %s из link", reply_id)
+            return _bind(reply)
+
+    with contextlib.suppress(Exception):
+        if (reply := await get_client().get_message(chat_id, reply_id)) is not None:
+            logger.debug("get_reply: догрузил сообщение %s по ID", reply_id)
+            return reply
+
+    with contextlib.suppress(Exception):
+        for reply in await get_client().fetch_history(chat_id, backward=100) or []:
+            if int(reply.id) == reply_id:
+                logger.debug("get_reply: нашёл сообщение %s в истории", reply_id)
+                return reply
+
+    logger.debug("get_reply: сообщение %s в чате %s не найдено", reply_id, chat_id)
     return None
 
 
@@ -273,6 +336,16 @@ async def get_attach_url(message: Message, attach: typing.Any) -> str | None:
     return None
 
 
+async def download_file(url: str) -> bytes:
+    """Скачивает файл по прямой ссылке."""
+    timeout = aiohttp.ClientTimeout(total=120, connect=15, sock_read=60)
+
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.get(url, allow_redirects=True) as response:
+            response.raise_for_status()
+            return await response.read()
+
+
 async def get_reply_document(message: Message) -> tuple[str, bytes] | None:
     """Имя и содержимое файла из сообщения, на которое отвечают.
 
@@ -289,15 +362,8 @@ async def get_reply_document(message: Message) -> tuple[str, bytes] | None:
     if not url:
         return None
 
-    timeout = aiohttp.ClientTimeout(total=120, connect=15, sock_read=60)
-
     with contextlib.suppress(Exception):
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(url, allow_redirects=True) as response:
-                response.raise_for_status()
-                data = await response.read()
-
-        return getattr(attach, "name", None) or "file.bin", data
+        return getattr(attach, "name", None) or "file.bin", await download_file(url)
 
     return None
 

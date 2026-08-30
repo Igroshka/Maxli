@@ -144,37 +144,74 @@ class LoaderMod(loader.Module):
     #                                commands                             #
     # ------------------------------------------------------------------ #
 
+    async def _reply_source(self, message: Message) -> tuple[tuple[str, str] | None, str | None]:
+        """Исходник модуля из файла, приложенного к сообщению или к ответу.
+
+        Возвращает пару «(имя, код), ошибка» — так команда объясняет, на каком
+        шаге всё сорвалось, вместо общей подсказки про путь и ссылку.
+        """
+        attach = utils.get_file_attach(message)
+        source = message
+
+        if attach is None:
+            if utils.get_reply_id(message) is None:
+                return None, None
+
+            source = await utils.get_reply(message)
+
+            if source is None:
+                return None, "❌ Не смог получить сообщение, на которое ты отвечаешь"
+
+            attach = utils.get_file_attach(source)
+
+            if attach is None:
+                return None, "❌ В этом сообщении нет файла"
+
+        name = getattr(attach, "name", None) or "module.py"
+
+        if not name.endswith(".py"):
+            return None, f"❌ {utils.mono(name)} — это не .py-файл"
+
+        url = await utils.get_attach_url(source, attach)
+
+        if not url:
+            return None, f"❌ Не удалось получить ссылку на {utils.mono(name)}"
+
+        try:
+            data = await utils.download_file(url)
+            return (name, data.decode("utf-8")), None
+        except UnicodeDecodeError:
+            return None, f"❌ {utils.mono(name)} — не текстовый файл"
+        except Exception as e:
+            return None, f"❌ Не скачался {utils.mono(name)}: {utils.mono(e)}"
+
     @loader.command(alias="lm")
     async def loadmodcmd(self, message: Message):
         """[путь или ссылка] — загрузить модуль из файла, по ссылке или из ответа на файл"""
         args = utils.get_args_raw(message).strip()
+        document = None
 
         # Без аргумента команду обычно пишут ответом на присланный .py-файл.
-        document = await utils.get_reply_document(message) if not args else None
+        if not args:
+            document, error = await self._reply_source(message)
 
-        if not args and document is None:
-            await utils.answer(
-                message,
-                "❌ Укажи путь к файлу, ссылку или ответь на файл модуля",
-            )
-            return
+            if error is not None:
+                await utils.answer(message, error)
+                return
 
-        if document is not None and not document[0].endswith(".py"):
-            await utils.answer(
-                message,
-                f"❌ {utils.mono(document[0])} — это не .py-файл",
-            )
-            return
+            if document is None:
+                await utils.answer(
+                    message,
+                    "❌ Укажи путь к файлу, ссылку или ответь на файл модуля",
+                )
+                return
 
         message = await utils.answer(message, self.strings["loading"]) or message
 
         try:
             if document is not None:
-                name, data = document
-                module = await self._load_source(
-                    data.decode("utf-8"),
-                    origin=name,
-                )
+                name, source = document
+                module = await self._load_source(source, origin=name)
             elif VALID_URL.match(args):
                 module = await self._load_from_url(args)
             else:
