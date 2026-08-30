@@ -237,9 +237,11 @@ class Series(Validator):
             value = [item.strip() for item in value.split(",") if item.strip()]
         elif isinstance(value, (tuple, set)):
             value = list(value)
-
-        if not isinstance(value, list):
-            raise ValidationError(f"Passed value ({value}) is not a list")
+        elif not isinstance(value, list):
+            # Одиночное значение — это список из одного элемента. Строку с
+            # запятыми ConfigValue успевает превратить в число или кортеж
+            # через literal_eval, поэтому сюда приходит уже не str.
+            value = [value]
 
         if self.fixed_len is not None and len(value) != self.fixed_len:
             raise ValidationError(f"List must contain exactly {self.fixed_len} items")
