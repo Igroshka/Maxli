@@ -22,6 +22,7 @@ import typing
 from pathlib import Path
 from urllib.parse import urlparse
 
+import aiohttp
 from pymax import Client, File, Message, Photo, Video
 from pymax.types import Chat, User
 
@@ -236,6 +237,67 @@ async def get_reply(message: Message) -> Message | None:
 
     with contextlib.suppress(Exception):
         return await get_client().get_message(chat_id, reply_id)
+
+    return None
+
+
+def get_file_attach(message: Message | None) -> typing.Any | None:
+    """Первое файловое вложение сообщения."""
+    for attach in getattr(message, "attaches", None) or []:
+        if str(getattr(attach, "type", "")).upper().endswith("FILE"):
+            return attach
+
+    return None
+
+
+async def get_attach_url(message: Message, attach: typing.Any) -> str | None:
+    """Прямая ссылка на вложение.
+
+    MAX отдаёт её не всегда сразу — тогда докручиваем через ``FILE_DOWNLOAD``.
+    """
+    if url := getattr(attach, "url", None):
+        return url
+
+    file_id = getattr(attach, "file_id", None) or getattr(attach, "audio_id", None)
+    chat_id = get_chat_id(message)
+
+    if file_id is None or chat_id is None:
+        return None
+
+    with contextlib.suppress(Exception):
+        result = await get_client().get_file_by_id(chat_id, message.id, file_id)
+
+        if result is not None and getattr(result, "url", None):
+            return result.url
+
+    return None
+
+
+async def get_reply_document(message: Message) -> tuple[str, bytes] | None:
+    """Имя и содержимое файла из сообщения, на которое отвечают.
+
+    Возвращает ``None``, если ответа нет, в нём нет файла или его не скачать.
+    """
+    reply = await get_reply(message)
+    attach = get_file_attach(reply)
+
+    if reply is None or attach is None:
+        return None
+
+    url = await get_attach_url(reply, attach)
+
+    if not url:
+        return None
+
+    timeout = aiohttp.ClientTimeout(total=120, connect=15, sock_read=60)
+
+    with contextlib.suppress(Exception):
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url, allow_redirects=True) as response:
+                response.raise_for_status()
+                data = await response.read()
+
+        return getattr(attach, "name", None) or "file.bin", data
 
     return None
 

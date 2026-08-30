@@ -146,17 +146,36 @@ class LoaderMod(loader.Module):
 
     @loader.command(alias="lm")
     async def loadmodcmd(self, message: Message):
-        """<путь или ссылка> — загрузить модуль из файла или по ссылке"""
-        args = utils.get_args_raw(message)
+        """[путь или ссылка] — загрузить модуль из файла, по ссылке или из ответа на файл"""
+        args = utils.get_args_raw(message).strip()
 
-        if not args:
-            await utils.answer(message, "❌ Укажи путь к файлу или ссылку")
+        # Без аргумента команду обычно пишут ответом на присланный .py-файл.
+        document = await utils.get_reply_document(message) if not args else None
+
+        if not args and document is None:
+            await utils.answer(
+                message,
+                "❌ Укажи путь к файлу, ссылку или ответь на файл модуля",
+            )
+            return
+
+        if document is not None and not document[0].endswith(".py"):
+            await utils.answer(
+                message,
+                f"❌ {utils.mono(document[0])} — это не .py-файл",
+            )
             return
 
         message = await utils.answer(message, self.strings["loading"]) or message
 
         try:
-            if VALID_URL.match(args):
+            if document is not None:
+                name, data = document
+                module = await self._load_source(
+                    data.decode("utf-8"),
+                    origin=name,
+                )
+            elif VALID_URL.match(args):
                 module = await self._load_from_url(args)
             else:
                 path = Path(args)
